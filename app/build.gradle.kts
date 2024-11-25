@@ -118,7 +118,17 @@ dependencies {
 
 
 
-    //worj manager
+    //work manager
     implementation ("androidx.work:work-runtime-ktx:2.9.1") // Use the latest version
+
+
+
+    //viewmodel
+    implementation ("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1") // Use the latest version
+    implementation ("androidx.lifecycle:lifecycle-runtime-compose:2.6.1")
+
+  //  implementation ("com.google.android.gms:play-services-activity-recognition:21.0.1")
+
+
 
 }

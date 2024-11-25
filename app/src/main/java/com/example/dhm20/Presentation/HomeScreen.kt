@@ -1,4 +1,4 @@
-package com.example.dhm20
+package com.example.dhm20.Presentation
 
 
 import com.example.dhm20.TrackingService
@@ -14,6 +14,7 @@ import android.os.Build.VERSION.SDK_INT
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -30,13 +31,13 @@ import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.core.app.ActivityCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.dhm20.TransitionReceiver
 import com.google.android.gms.location.ActivityRecognition
 import com.google.android.gms.location.ActivityTransition
 import com.google.android.gms.location.ActivityTransitionRequest
 import com.google.android.gms.location.DetectedActivity
-import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.firestore.FirebaseFirestore
 
 
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
@@ -44,6 +45,12 @@ import com.google.firebase.firestore.FirebaseFirestore
 fun HomeScreen(navController: NavHostController, auth: FirebaseAuth) {
     val context = LocalContext.current
     val firebaseDatabase = FirebaseDatabase.getInstance().reference
+    // Initialize StateViewModel here
+    val stateViewModel: StateViewModel = viewModel()
+
+    // Observe the authState from the ViewModel
+    val authState = stateViewModel.authState.collectAsState()
+    val sharedPreferences = context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
 
     // Initial permissions for location and audio (excluding activity recognition if < API 29)
     val initialPermissions = mutableListOf(
@@ -74,6 +81,8 @@ fun HomeScreen(navController: NavHostController, auth: FirebaseAuth) {
                 title = { Text("Dashboard") },
                 actions = {
                     Button(onClick = {
+                        sharedPreferences.edit().putBoolean("isFirstLaunch", true).apply()
+
                         auth.signOut()
                         navController.navigate("sign_in") {
                             popUpTo("home") { inclusive = true }

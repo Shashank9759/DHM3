@@ -7,28 +7,24 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
 import com.example.dhm20.Data.InternetConnectivityReceiver
-import com.example.dhm20.Data.SyncWorker
+import com.example.dhm20.Presentation.HomeScreen
+import com.example.dhm20.Presentation.StateViewModel
 import com.example.dhm20.ui.theme.DHM20Theme
 import com.google.firebase.auth.FirebaseAuth
-import com.google.android.gms.auth.api.identity.Identity
-import com.google.android.gms.auth.api.identity.SignInClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
 
@@ -36,8 +32,13 @@ class MainActivity : ComponentActivity() {
     private lateinit var internetConnectivityReceiver: InternetConnectivityReceiver
 
     // StateFlow to hold the authentication state
-    private val _authState = MutableStateFlow<Boolean>(false)
-    val authState = _authState.asStateFlow()
+
+//    private val _authState = MutableStateFlow<Boolean>(false)
+//    var authState = _authState.asStateFlow()
+
+    // Initialize StateViewModel here
+    private val viewmodel: StateViewModel by viewModels()
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,12 +49,12 @@ class MainActivity : ComponentActivity() {
         if (auth.currentUser != null) {
             if (shouldForceLogout(this)) { // Optional condition based on your logic
                 auth.signOut()
-                _authState.value = false // Navigate to Login screen
+                viewmodel.updateMessage(false) // Navigate to Login screen
             } else {
-                _authState.value = true // User is signed in
+                viewmodel.updateMessage(true) // User is signed in
             }
         }
-        Log.d("logstate",_authState.value.toString())
+        Log.d("logstate",viewmodel.getMessage().toString())
 
 
 
@@ -64,7 +65,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AppNavigation(authState, auth)
+                    AppNavigation(viewmodel.authState, auth)
                 }
             }
         }
