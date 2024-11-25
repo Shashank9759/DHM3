@@ -19,6 +19,7 @@ import androidx.credentials.GetCredentialResponse
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.example.dhm20.Utils.CLIENT_ID
 import com.google.android.gms.auth.api.identity.*
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
@@ -60,7 +61,7 @@ fun SignInScreen(navController: NavController, auth: FirebaseAuth) {
 
             val googleIdOption = GetGoogleIdOption.Builder()
                 .setFilterByAuthorizedAccounts(false)
-                .setServerClientId("461259927203-cc39206qgtobopp21r3k0076644e06p5.apps.googleusercontent.com")
+                .setServerClientId(CLIENT_ID)
                 .setNonce(hashedNonce)
                 .build()
 
@@ -110,4 +111,3 @@ suspend fun signInWithGoogle(idToken: String) {
     val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
     Firebase.auth.signInWithCredential(firebaseCredential).await()
 }
-

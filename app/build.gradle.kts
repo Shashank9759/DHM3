@@ -2,6 +2,10 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("com.google.gms.google-services") // Google Services Plugin
+//    id("com.google.devtools.ksp")
+    id("kotlin-kapt")
+
+
 
 }
 
@@ -9,9 +13,13 @@ android {
     namespace = "com.example.dhm20"
     compileSdk = 34
 
+    sourceSets {
+        android.sourceSets["main"].java.srcDirs("build/generated/ksp/debug/kotlin")
+
+    }
     defaultConfig {
         applicationId = "com.example.dhm20"
-        minSdk = 29
+        minSdk = 31
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -39,11 +47,12 @@ android {
     kotlinOptions {
         jvmTarget = "1.8"
     }
+
     buildFeatures {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
+        kotlinCompilerExtensionVersion = "1.5.11"
     }
     packaging {
         resources {
@@ -87,6 +96,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.navigation.runtime.ktx)
     implementation(libs.androidx.navigation.compose)
+   // implementation(libs.androidx.room.common)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -94,4 +104,21 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
+
+    implementation ("androidx.room:room-runtime:2.4.3")
+    annotationProcessor("androidx.room:room-compiler:2.4.3")
+    kapt("androidx.room:room-compiler:2.5.2")
+
+ //   ksp ("androidx.room:room-compiler:2.5.2") // If using KSP
+
+    // Coroutines Support
+   implementation ("androidx.room:room-ktx:2.4.3")
+
+
+
+
+    //worj manager
+    implementation ("androidx.work:work-runtime-ktx:2.9.1") // Use the latest version
+
 }

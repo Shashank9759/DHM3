@@ -1,5 +1,6 @@
 package com.example.dhm20
 
+
 import com.example.dhm20.TrackingService
 import android.Manifest
 import android.app.Activity
@@ -50,7 +51,8 @@ fun HomeScreen(navController: NavHostController, auth: FirebaseAuth) {
         Manifest.permission.ACCESS_FINE_LOCATION,
         Manifest.permission.RECORD_AUDIO,
         Manifest.permission.POST_NOTIFICATIONS,
-        Manifest.permission.READ_PHONE_STATE
+        Manifest.permission.READ_PHONE_STATE,
+        Manifest.permission.FOREGROUND_SERVICE
     ).apply {
         // Add ACTIVITY_RECOGNITION only if API level >= 29
         add(Manifest.permission.ACTIVITY_RECOGNITION)
@@ -117,8 +119,9 @@ fun HomeScreen(navController: NavHostController, auth: FirebaseAuth) {
                 }
 
             }else if (SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(context as Activity, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
+                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                    && ActivityCompat.checkSelfPermission(context, Manifest.permission.FOREGROUND_SERVICE) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(context as Activity, arrayOf(Manifest.permission.POST_NOTIFICATIONS, Manifest.permission.FOREGROUND_SERVICE), 1001)
                 }
             }else{
                 Text("All permissions granted!")
@@ -126,7 +129,7 @@ fun HomeScreen(navController: NavHostController, auth: FirebaseAuth) {
                 val serviceIntent = Intent(context, TrackingService::class.java)
                 if (SDK_INT >= Build.VERSION_CODES.O) {
                     context.startForegroundService(serviceIntent)
-                    startActivityTransitionUpdates(context )
+                 //   startActivityTransitionUpdates(context )
                     Log.d("vd","service started")
                 } else {
                     Log.d("vd","service started2")
