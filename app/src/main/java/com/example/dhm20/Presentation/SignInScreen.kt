@@ -1,32 +1,27 @@
-package com.example.dhm20
+package com.example.dhm20.Presentation
 
 import android.content.ContentValues.TAG
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
-import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
-import androidx.credentials.GetCredentialResponse
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.example.dhm20.R
 import com.example.dhm20.Utils.CLIENT_ID
-import com.google.android.gms.auth.api.identity.*
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
@@ -40,8 +35,18 @@ import kotlinx.coroutines.tasks.await
 import java.security.MessageDigest
 import java.util.UUID
 
+
+
+@Preview()
 @Composable
-fun SignInScreen(navController: NavController, auth: FirebaseAuth) {
+fun preview(){
+    val NavController= rememberNavController()
+    SignInScreen(NavController)
+}
+
+
+@Composable
+fun SignInScreen(navController: NavController) {
     val coroutineScope = rememberCoroutineScope()
     Column(
         modifier = Modifier
@@ -110,7 +115,7 @@ fun SignInScreen(navController: NavController, auth: FirebaseAuth) {
             contentDescription = "App Logo", // A description for accessibility
             modifier = Modifier.size(150.dp) // Adjust the size as per your requirement
         )
-        Text(modifier=Modifier.size(60.dp), fontWeight = FontWeight.Bold,text="Sign in to your account")
+
 
         IconButton(
             onClick = onClick, // Set the onClick listener

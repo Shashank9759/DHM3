@@ -3,6 +3,7 @@ package com.example.dhm20
 
 import androidx.compose.ui.platform.LocalContext
 import android.Manifest
+import android.app.Activity
 import android.app.Notification
 import android.app.Service
 import android.app.NotificationChannel
@@ -21,9 +22,14 @@ import android.util.Log
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.MutableLiveData
 import com.example.dhm20.Data.ActivityLog
 import com.example.dhm20.Data.AppDatabase
+import com.example.dhm20.Presentation.StateViewModel
+import com.example.dhm20.Presentation.toggleStates
 import com.example.dhm20.R
+import com.example.dhm20.SleepReceiver.Companion.logSleepEvent
 import com.example.dhm20.TransitionReceiver2.Companion.logTransitionEvent
 //import com.example.dhm20.TransitionReceiver
 import com.google.android.gms.location.ActivityRecognition
@@ -33,6 +39,8 @@ import com.google.android.gms.location.ActivityTransitionEvent
 import com.google.android.gms.location.ActivityTransitionRequest
 import com.google.android.gms.location.ActivityTransitionResult
 import com.google.android.gms.location.DetectedActivity
+import com.google.android.gms.location.SleepSegmentEvent
+import com.google.android.gms.location.SleepSegmentRequest
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
@@ -43,9 +51,13 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class TrackingService : Service() {
+
+
+class TrackingService() : Service() {
     private val firebaseDatabase = FirebaseDatabase.getInstance().reference
     lateinit var notification:Notification
+
+
     val notificationId = 404
     val handler=Handler(Looper.getMainLooper())
     var count=0
@@ -54,6 +66,11 @@ class TrackingService : Service() {
         startForegroundServiceWithNotification()
 
         startActivityTransitionUpdates(this)
+        requestSleepUpdates(this)
+
+
+
+
     }
 
 
@@ -102,7 +119,12 @@ class TrackingService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 Log.d("onstartcommenad","working")
         val trans=ActivityTransitionEvent(DetectedActivity.RUNNING,ACTIVITY_TRANSITION_ENTER,0L)
+        val sleepEvent = SleepSegmentEvent(1625000000000L, 1625030000000L, SleepSegmentEvent.STATUS_SUCCESSFUL, 0,0)
+
+
         logTransitionEvent(trans,this)
+//        logTransitionEvent(trans,this)
+//        logSleepEvent(sleepEvent,this)
 
 //        val toastRunnable=object:Runnable{
 //            override fun run() {
@@ -148,6 +170,37 @@ Log.d("onstartcommenad","working")
             }
         }
     }
+    private fun requestSleepUpdates(context: Context) {
+        // Check if the ACTIVITY_RECOGNITION permission is granted
+        if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED) {
+            try {
+                val sleepPendingIntent = PendingIntent.getBroadcast(
+                    context,
+                    1,
+                    Intent(context, SleepReceiver::class.java),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+                )
+                val sleepSegmentRequest = SleepSegmentRequest.getDefaultSleepSegmentRequest()
+                val task = ActivityRecognition.getClient(context).requestSleepSegmentUpdates(sleepPendingIntent,sleepSegmentRequest)
+
+                task.addOnSuccessListener {
+                    Log.d("SleepAPI", "Sleep updates successfully registered.")
+                }.addOnFailureListener {
+                    Log.e("SleepAPI", "Failed to register sleep updates: ${it.message}")
+                }
+            } catch (e: SecurityException) {
+                Log.e("SleepAPI", "SecurityException: ${e.message}")
+            }
+        } else {
+            // Permission not granted, request permission
+            ActivityCompat.requestPermissions(
+                (context as Activity),
+                arrayOf(android.Manifest.permission.ACTIVITY_RECOGNITION),
+                REQUEST_CODE_ACTIVITY_RECOGNITION
+            )
+        }
+    }
+
     override fun onBind(intent: Intent?): IBinder? {
         return null
     }
@@ -160,7 +213,7 @@ class TransitionReceiver2 : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (ActivityTransitionResult.hasResult(intent)) {
             Log.d("contentReceived","received")
-            Toast.makeText(context,"contentReceived",Toast.LENGTH_SHORT).show()
+          //  Toast.makeText(context,"contentReceived",Toast.LENGTH_SHORT).show()
             val result = ActivityTransitionResult.extractResult(intent)
             result?.transitionEvents?.forEach { event ->
 
@@ -179,7 +232,7 @@ companion object{
         val db = AppDatabase.getInstance(context)
         val dao = db.activityLogDao()
         Log.d("@@@@","worked1")
-        Toast.makeText(context,"worked1",Toast.LENGTH_SHORT).show()
+    //    Toast.makeText(context,"worked1",Toast.LENGTH_SHORT).show()
         // Get the current user's UID for individual data storage
         //    val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
@@ -221,17 +274,23 @@ companion object{
 //            }
 
 
+        toggleStates
 
+
+        val activityType=when (event.activityType) {
+            DetectedActivity.IN_VEHICLE -> "Vehicle"
+            DetectedActivity.RUNNING -> "Running"
+            DetectedActivity.WALKING -> "Walking"
+            else -> "Unknown"
+        }
+
+        if(!(toggleStates[activityType]?:false)){
+       //     Toast.makeText(context,"Receiver ${activityType} , ${toggleStates[activityType].toString()}",
+           //     Toast.LENGTH_SHORT).show();
+             return
+        }
         val log = ActivityLog(
-            activityType = when (event.activityType) {
-                DetectedActivity.IN_VEHICLE -> "In Vehicle"
-                DetectedActivity.ON_BICYCLE -> "On Bicycle"
-                DetectedActivity.ON_FOOT -> "On Foot"
-                DetectedActivity.RUNNING -> "Running"
-                DetectedActivity.STILL -> "Still"
-                DetectedActivity.WALKING -> "Walking"
-                else -> "Unknown"
-            },
+            activityType = activityType,
             transitionType = if (event.transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) "Enter" else "Exit",
             timestamp = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
         )

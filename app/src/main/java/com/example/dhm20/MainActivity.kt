@@ -12,19 +12,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.dhm20.Data.InternetConnectivityReceiver
 import com.example.dhm20.Presentation.HomeScreen
+import com.example.dhm20.Presentation.SignInScreen
 import com.example.dhm20.Presentation.StateViewModel
 import com.example.dhm20.ui.theme.DHM20Theme
 import com.google.firebase.auth.FirebaseAuth
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 
 class MainActivity : ComponentActivity() {
 
@@ -110,7 +108,8 @@ fun AppNavigation(authState: StateFlow<Boolean>, auth: FirebaseAuth) {
     val isLoggedIn by authState.collectAsState()
 
     NavHost(navController = navController, startDestination = if (isLoggedIn) "home" else "sign_in") {
-        composable("sign_in") { SignInScreen(navController, auth) }
+        composable("sign_in") { SignInScreen(navController) }
         composable("home") { HomeScreen(navController, auth) }
+
     }
 }

@@ -26,6 +26,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
 
 
+    <!-- Permission for sleep api -->
+    <uses-permission android:name="android.permission.BODY_SENSORS"/>
+
+
     <!-- Permission for Phone Usage (Package Usage Stats) -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
