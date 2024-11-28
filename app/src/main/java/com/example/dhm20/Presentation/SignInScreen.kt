@@ -3,13 +3,19 @@ package com.example.dhm20
 import android.content.ContentValues.TAG
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
@@ -44,9 +50,9 @@ fun SignInScreen(navController: NavController, auth: FirebaseAuth) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Sign in to your account")
 
-        Spacer(modifier = Modifier.height(20.dp))
+
+
 
         val context = LocalContext.current
 
@@ -99,10 +105,26 @@ fun SignInScreen(navController: NavController, auth: FirebaseAuth) {
                 }
             }
         }
+        Image(
+            painter = painterResource(id = R.drawable.app_logo), // Reference your logo drawable here
+            contentDescription = "App Logo", // A description for accessibility
+            modifier = Modifier.size(150.dp) // Adjust the size as per your requirement
+        )
+        Text(modifier=Modifier.size(60.dp), fontWeight = FontWeight.Bold,text="Sign in to your account")
 
-        // Google Sign-In Button
-        Button(onClick = onClick) {
-            Text("Sign in with Google")
+        IconButton(
+            onClick = onClick, // Set the onClick listener
+            modifier = Modifier.size(180.dp) // Set the size of the button
+
+
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.google_signin), // Replace with your drawable
+                contentDescription = "Google Sign-In Icon",
+                tint = Color.Unspecified, // Preserve original colors of the icon
+                modifier = Modifier.size(180.dp) // Set the icon size
+
+            )
         }
     }
 }
