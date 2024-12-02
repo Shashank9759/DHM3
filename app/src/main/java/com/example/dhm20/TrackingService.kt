@@ -262,8 +262,8 @@ class TrackingService() : Service() {
         Log.d("TrackingService", "syncAppUsageDataToFirebase: Syncing screen time: $screenOnTime ms")
         userRef.child("screen_time").setValue(screenOnTime)
 
-        dailyAppUsage.forEach { (appName, appData) ->
-            val simplifiedAppName = appName.substringAfterLast(".")
+        dailyAppUsage.forEach { (packageName, appData) ->
+            val simplifiedAppName = simplifyAppName(packageName)
             Log.d(
                 "TrackingService", "syncAppUsageDataToFirebase: App $simplifiedAppName - " +
                         "Opened: ${appData.openCount} times, Duration: ${appData.totalDuration} ms"
@@ -276,6 +276,20 @@ class TrackingService() : Service() {
         Log.d("TrackingService", "syncAppUsageDataToFirebase: Data sync complete for user $userId")
     }
 
+    private fun simplifyAppName(packageName: String): String {
+        // Map known apps to their user-friendly names
+        val knownApps = mapOf(
+            "com.snapchat.android" to "Snapchat",
+            "com.linkedin.android" to "LinkedIn",
+            "com.instagram.android" to "Instagram",
+            "com.twitter.android" to "Twitter",
+            "org.telegram.messenger" to "Telegram",
+            "com.bereal.ft" to "BeReal"
+        )
+
+        // Check if the package is in the map, otherwise use the default logic
+        return knownApps[packageName] ?: packageName.substringAfterLast(".")
+    }
     private fun scheduleDailySyncAt11PM() {
         Log.d("TrackingService", "scheduleDailySyncAt11PM: Setting up daily sync alarm")
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
