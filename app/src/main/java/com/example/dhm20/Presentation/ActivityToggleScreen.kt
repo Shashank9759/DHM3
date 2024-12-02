@@ -32,7 +32,9 @@ val toggleStates = mutableStateMapOf(
         "Running" to true,
         "Walking" to true,
         "Vehicle" to true,
-        "Sleep" to true
+        "Sleep" to true,
+        "Microphone" to true,
+         "Location" to true
     )
 
 @Preview()

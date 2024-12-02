@@ -59,12 +59,15 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.os.*
+import com.example.dhm20.Data.AudioDB
+import com.example.dhm20.Data.AudioLog
+import com.example.dhm20.Data.LocationDB
 import com.google.android.gms.location.*
 import com.google.android.gms.location.FusedLocationProviderClient
 
 import com.google.android.gms.location.SleepClassifyEvent
 import java.util.*
-
+import com.example.dhm20.Data.LocationLog
 data class AppUsageData(var openCount: Int = 0, var totalDuration: Long = 0)
 
 private var currentActivity = "Still"
@@ -194,10 +197,10 @@ class TrackingService() : Service() {
 
 
         //dev
-//        startActivityTransitionUpdates(this)
-//        startPeriodicSync()
-//        startAudioDetection()
-//        startLocationUpdates()
+        startActivityTransitionUpdates(this)
+        startPeriodicSync()
+        startAudioDetection()
+        startLocationUpdates()
 
 
         if (intent?.getBooleanExtra("run_sync", false) == true) {
@@ -360,13 +363,30 @@ class TrackingService() : Service() {
     }
 
     private fun syncAudioState(isConversationDetected: Boolean) {
+        val db = AudioDB.getInstance(this)
+        val dao = db.audiologDao()
+        if(!(toggleStates["Microphone"]?:false)){
+            //     Toast.makeText(context,"Receiver ${activityType} , ${toggleStates[activityType].toString()}",
+            //     Toast.LENGTH_SHORT).show();
+            return
+        }
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        firebaseDatabase.child("users").child(userId).child("audio_data").push().setValue(
-            mapOf(
-                "conversation" to if (isConversationDetected) 1 else 0,
-                "timestamp" to SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
-            )
+//        firebaseDatabase.child("users").child(userId).child("audio_data").push().setValue(
+//            mapOf(
+//                "conversation" to if (isConversationDetected) 1 else 0,
+//                "timestamp" to SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
+//            )
+//        )
+
+        val log = AudioLog(
+            conversation =if (isConversationDetected) 1 else 0,
+
+            timestamp = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
         )
+        Log.d("audio_log",log.toString())
+        CoroutineScope(Dispatchers.IO).launch {
+            dao.insert(log)
+        }
     }
 
     private fun startLocationUpdates() {
@@ -385,14 +405,29 @@ class TrackingService() : Service() {
     }
 
     private fun logLocationData(latitude: Double, longitude: Double) {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        firebaseDatabase.child("users").child(userId).child("gps_data").push().setValue(
-            mapOf(
-                "latitude" to latitude,
-                "longitude" to longitude,
-                "timestamp" to SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
-            )
+        val db = LocationDB.getInstance(this)
+        val dao = db.locationlogDao()
+        if(!(toggleStates["Location"]?:false)){
+            //     Toast.makeText(context,"Receiver ${activityType} , ${toggleStates[activityType].toString()}",
+            //     Toast.LENGTH_SHORT).show();
+            return
+        }
+  //      val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+//        firebaseDatabase.child("users").child(userId).child("gps_data").push().setValue(
+//            mapOf(
+//                "latitude" to latitude,
+//                "longitude" to longitude,
+//                "timestamp" to SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
+//            )
+//        )
+        val log = LocationLog(
+            latitude =latitude,
+             longitude = longitude,
+            timestamp = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
         )
+        CoroutineScope(Dispatchers.IO).launch {
+            dao.insert(log)
+        }
     }
 
 
@@ -432,15 +467,16 @@ class TrackingService() : Service() {
         }
     }
     private fun requestSleepUpdates(context: Context) {
+        Intent(context, SleepReceiver::class.java)
         // Check if the ACTIVITY_RECOGNITION permission is granted
         if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED) {
             try {
                 val sleepPendingIntent = PendingIntent.getBroadcast(
                     context,
                     1,
-                    Intent(context, SleepReceiver::class.java),
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-                )
+                    Intent(context, SleepReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+                 )
+
                 val sleepSegmentRequest = SleepSegmentRequest.getDefaultSleepSegmentRequest()
                 val task = ActivityRecognition.getClient(context).requestSleepSegmentUpdates(sleepPendingIntent,sleepSegmentRequest)
 
@@ -620,7 +656,7 @@ companion object{
 //            }
 
 
-        toggleStates
+
 
 
         val activityType=when (event.activityType) {
