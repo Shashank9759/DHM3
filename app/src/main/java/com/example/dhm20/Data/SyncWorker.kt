@@ -4,27 +4,33 @@ import android.content.Context
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.example.dhm20.Data.Database.AppDatabase
+import com.example.dhm20.Data.Database.AppUsageDB
+import com.example.dhm20.Data.Database.AudioDB
+import com.example.dhm20.Data.Database.LocationDB
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class SyncWorker(appContext: Context, workerParams: WorkerParameters) : CoroutineWorker(appContext, workerParams) {
     private val firebaseDatabase = FirebaseDatabase.getInstance().reference
     private val db = AppDatabase.getInstance(applicationContext)
     private val audiodb = AudioDB.getInstance(applicationContext)
     private val locationdb = LocationDB.getInstance(applicationContext)
+    private val appusagedb = AppUsageDB.getInstance(applicationContext)
 
     override suspend fun doWork(): Result {
         val logs = db.activityLogDao().getAllLogs()
         val audioLogs = audiodb.audiologDao().getAllLogs()
         val locationLogs = locationdb.locationlogDao().getAllLogs()
+        val AppUsageLogs = appusagedb.appusagelogDao().getAllLogs()
 
       if((logs==null || logs!!.isEmpty())
           && (audioLogs==null || audioLogs!!.isEmpty())
-          && (locationLogs==null || locationLogs!!.isEmpty()) ) {
+          && (locationLogs==null || locationLogs!!.isEmpty())
+          && (AppUsageLogs==null || AppUsageLogs!!.isEmpty())) {
           return Result.failure()
 
         }
@@ -128,9 +134,68 @@ class SyncWorker(appContext: Context, workerParams: WorkerParameters) : Coroutin
               }
 
           }
+          if (AppUsageLogs!=null && AppUsageLogs!!.isNotEmpty()) {
+              Log.d("appusagelog@@@@", "log is not null")
+              // Iterate over each log and upload to Firebase
+              for (log in AppUsageLogs) {
+                  val userId = FirebaseAuth.getInstance().currentUser?.uid ?: "anonymous"
+
+                  try {
+                      // Upload log to Firebase
+                      val userRef = firebaseDatabase.child("users")
+                          .child(userId)
+                          .child("phone_usage")
+                          .child(log.date)
+
+
+
+                      log.usageMap.forEach { (packageName, appData) ->
+                          val simplifiedAppName = simplifyAppName(packageName)
+                          Log.d(
+                              "TrackingService",
+                              "syncAppUsageDataToFirebase: App $simplifiedAppName - " +
+                                      "Opened: ${appData.get(0)} times, Duration: ${appData.get(1)} ms"
+                          )
+                          val appRef = userRef.child("apps").child(simplifiedAppName)
+                          appRef.child("opened").setValue(appData.get(0))
+                          appRef.child("aggregated_duration").setValue(appData.get(1))
+                      }
+
+                      userRef.child("screen_time").setValue(log.screenOnTime).addOnSuccessListener {
+                          Log.d("SyncWorker", "Successfully appusage synced log: $log")
+                          CoroutineScope(Dispatchers.IO).launch {
+                              appusagedb.appusagelogDao().delete(log)
+                          }
+                      }
+
+
+                  } catch (e: Exception) {
+                      Log.e("SyncWorker", "Error appusage syncing log: ${e.message}")
+                      //  return Result.failure()  // Failure on syncing any log
+                  }
+              }
+
+          }
           return Result.success()
 
       }
 
     }
+
+    private fun simplifyAppName(packageName: String): String {
+        // Map known apps to their user-friendly names
+        val knownApps = mapOf(
+            "com.snapchat.android" to "Snapchat",
+            "com.linkedin.android" to "LinkedIn",
+            "com.instagram.android" to "Instagram",
+            "com.twitter.android" to "Twitter",
+            "org.telegram.messenger" to "Telegram",
+            "com.bereal.ft" to "BeReal"
+        )
+
+        // Check if the package is in the map, otherwise use the default logic
+        return knownApps[packageName] ?: packageName.substringAfterLast(".")
+    }
+
 }
+

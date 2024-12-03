@@ -34,8 +34,10 @@ val toggleStates = mutableStateMapOf(
         "Vehicle" to true,
         "Sleep" to true,
         "Microphone" to true,
-         "Location" to true
+         "Location" to true,
+        "App Sync" to true
     )
+val keyOrder = listOf("Running", "Walking", "Vehicle", "Sleep", "Microphone", "Location", "App Sync")
 
 @Preview()
 @Composable
@@ -63,11 +65,12 @@ fun ActivityToggleScreen(
             fontSize = 30.sp, style = MaterialTheme.typography.bodyLarge)
 
         // Use forEach to iterate over entries of the map
-        toggleStates.entries.forEach { entry ->
-            key(entry.key) { // Add a key for better recomposition
-                ToggleRow(activity = entry.key, isEnabled = entry.value) { isChecked ->
-                    toggleStates[entry.key] = isChecked
-                    onToggleChanged(entry.key, isChecked)
+        keyOrder.forEach { key  ->
+            val value = toggleStates[key]
+            key(key) { // Add a key for better recomposition
+                ToggleRow(activity = key, isEnabled = value!!) { isChecked ->
+                    toggleStates[key] = isChecked
+                    onToggleChanged(key, isChecked)
                 }
             }
         }

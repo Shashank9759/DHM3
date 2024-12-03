@@ -1,4 +1,4 @@
-package com.example.dhm20.Data
+package com.example.dhm20.Data.Entities
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity

@@ -1,7 +1,6 @@
 package com.example.dhm20
 
 
-import androidx.compose.ui.platform.LocalContext
 import android.Manifest
 import android.app.Activity
 import android.app.Notification
@@ -23,14 +22,9 @@ import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.MutableLiveData
-import com.example.dhm20.Data.ActivityLog
-import com.example.dhm20.Data.AppDatabase
-import com.example.dhm20.Presentation.StateViewModel
+import com.example.dhm20.Data.Entities.ActivityLog
+import com.example.dhm20.Data.Database.AppDatabase
 import com.example.dhm20.Presentation.toggleStates
-import com.example.dhm20.R
-import com.example.dhm20.SleepReceiver.Companion.logSleepEvent
-import com.example.dhm20.TransitionReceiver2.Companion.logTransitionEvent
 //import com.example.dhm20.TransitionReceiver
 import com.google.android.gms.location.ActivityRecognition
 import com.google.android.gms.location.ActivityTransition
@@ -42,7 +36,6 @@ import com.google.android.gms.location.DetectedActivity
 import com.google.android.gms.location.SleepSegmentEvent
 import com.google.android.gms.location.SleepSegmentRequest
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -50,7 +43,6 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import android.content.SharedPreferences
 
 import android.app.*
 import android.app.usage.UsageStatsManager
@@ -58,16 +50,16 @@ import android.content.*
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
-import android.os.*
-import com.example.dhm20.Data.AudioDB
-import com.example.dhm20.Data.AudioLog
-import com.example.dhm20.Data.LocationDB
+import com.example.dhm20.Data.Database.AppUsageDB
+import com.example.dhm20.Data.Entities.AppUsageLog
+import com.example.dhm20.Data.Database.AudioDB
+import com.example.dhm20.Data.Entities.AudioLog
+import com.example.dhm20.Data.Database.LocationDB
 import com.google.android.gms.location.*
 import com.google.android.gms.location.FusedLocationProviderClient
 
-import com.google.android.gms.location.SleepClassifyEvent
 import java.util.*
-import com.example.dhm20.Data.LocationLog
+import com.example.dhm20.Data.Entities.LocationLog
 data class AppUsageData(var openCount: Int = 0, var totalDuration: Long = 0)
 
 private var currentActivity = "Still"
@@ -181,7 +173,7 @@ class TrackingService() : Service() {
         val sleepEvent = SleepSegmentEvent(1625000000000L, 1625030000000L, SleepSegmentEvent.STATUS_SUCCESSFUL, 0,0)
 
 
-        logTransitionEvent(trans,this)
+    //    logTransitionEvent(trans,this)
 //        logTransitionEvent(trans,this)
 //        logSleepEvent(sleepEvent,this)
 
@@ -198,14 +190,14 @@ class TrackingService() : Service() {
 
         //dev
         startActivityTransitionUpdates(this)
-        startPeriodicSync()
+        startPeriodicSync(this)
         startAudioDetection()
         startLocationUpdates()
 
 
         if (intent?.getBooleanExtra("run_sync", false) == true) {
             aggregateAppUsageData()
-            syncAppUsageDataToFirebase()
+            syncAppUsageDataToRoomDB()
         }
         return START_STICKY
         //devend
@@ -250,46 +242,58 @@ class TrackingService() : Service() {
             }
         }
     }
-    private fun syncAppUsageDataToFirebase() {
-        Log.d("TrackingService", "syncAppUsageDataToFirebase: Starting data sync")
-        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: run {
-            Log.w("TrackingService", "syncAppUsageDataToFirebase: User ID is null, aborting sync")
+    private fun syncAppUsageDataToRoomDB() {
+//        Log.d("TrackingService", "syncAppUsageDataToFirebase: Starting data sync")
+//        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: run {
+//            Log.w("TrackingService", "syncAppUsageDataToFirebase: User ID is null, aborting sync")
+//            return
+//        }
+//        val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+//        val userRef = firebaseDatabase.child("users").child(userId).child("phone_usage").child(date)
+//
+//        Log.d("TrackingService", "syncAppUsageDataToFirebase: Syncing screen time: $screenOnTime ms")
+//        userRef.child("screen_time").setValue(screenOnTime)
+//
+//
+//        dailyAppUsage.forEach { (packageName, appData) ->
+//            val simplifiedAppName = simplifyAppName(packageName)
+//            Log.d(
+//                "TrackingService", "syncAppUsageDataToFirebase: App $simplifiedAppName - " +
+//                        "Opened: ${appData.openCount} times, Duration: ${appData.totalDuration} ms"
+//            )
+//            val appRef = userRef.child("apps").child(simplifiedAppName)
+//            appRef.child("opened").setValue(appData.openCount)
+//            appRef.child("aggregated_duration").setValue(appData.totalDuration)
+//        }
+//
+//        Log.d("TrackingService", "syncAppUsageDataToFirebase: Data sync complete for user $userId")
+
+        if(!(toggleStates["App Sync"]?:false)){
+            //     Toast.makeText(context,"Receiver ${activityType} , ${toggleStates[activityType].toString()}",
+            //     Toast.LENGTH_SHORT).show();
             return
         }
-        val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-        val userRef = firebaseDatabase.child("users").child(userId).child("phone_usage").child(date)
+        val usageMap: Map<String, List<Long>> = dailyAppUsage.mapValues { (_, appData) ->
+            listOf(appData.openCount.toLong(), appData.totalDuration)
+        }
+        val db= AppUsageDB.getInstance(this)
+        val dao=db.appusagelogDao()
 
-        Log.d("TrackingService", "syncAppUsageDataToFirebase: Syncing screen time: $screenOnTime ms")
-        userRef.child("screen_time").setValue(screenOnTime)
 
-        dailyAppUsage.forEach { (packageName, appData) ->
-            val simplifiedAppName = simplifyAppName(packageName)
-            Log.d(
-                "TrackingService", "syncAppUsageDataToFirebase: App $simplifiedAppName - " +
-                        "Opened: ${appData.openCount} times, Duration: ${appData.totalDuration} ms"
-            )
-            val appRef = userRef.child("apps").child(simplifiedAppName)
-            appRef.child("opened").setValue(appData.openCount)
-            appRef.child("aggregated_duration").setValue(appData.totalDuration)
+        val log= AppUsageLog(
+            usageMap=usageMap,
+            screenOnTime = screenOnTime,
+             date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        )
+            Log.d("TrackingService", "syncAppUsageDataToRoomdb: Log: $log")
+        CoroutineScope(Dispatchers.IO).launch {
+            dao.insert(log)
         }
 
-        Log.d("TrackingService", "syncAppUsageDataToFirebase: Data sync complete for user $userId")
+
     }
 
-    private fun simplifyAppName(packageName: String): String {
-        // Map known apps to their user-friendly names
-        val knownApps = mapOf(
-            "com.snapchat.android" to "Snapchat",
-            "com.linkedin.android" to "LinkedIn",
-            "com.instagram.android" to "Instagram",
-            "com.twitter.android" to "Twitter",
-            "org.telegram.messenger" to "Telegram",
-            "com.bereal.ft" to "BeReal"
-        )
 
-        // Check if the package is in the map, otherwise use the default logic
-        return knownApps[packageName] ?: packageName.substringAfterLast(".")
-    }
     private fun scheduleDailySyncAt11PM() {
         Log.d("TrackingService", "scheduleDailySyncAt11PM: Setting up daily sync alarm")
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -317,18 +321,29 @@ class TrackingService() : Service() {
         Log.d("TrackingService", "scheduleDailySyncAt11PM: Daily sync alarm scheduled")
     }
 
-    private fun startPeriodicSync() {
-        handler.postDelayed({ syncActivityData(currentActivity) }, syncInterval)
+    private fun startPeriodicSync(context:Context) {
+        handler.postDelayed({ syncActivityData(currentActivity,context) }, syncInterval)
     }
 
-    private fun syncActivityData(activityType: String) {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        firebaseDatabase.child("users").child(userId).child("activity_transitions").push().setValue(
-            mapOf(
-                "activity" to activityType,
-                "timestamp" to SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-            )
+    private fun syncActivityData(activityType: String,context:Context) {
+//        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+//        firebaseDatabase.child("users").child(userId).child("activity_transitions").push().setValue(
+//            mapOf(
+//                "activity" to activityType,
+//                "timestamp" to SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+//            )
+//        )
+
+        val db = AppDatabase.getInstance(context)
+        val dao = db.activityLogDao()
+        val log = ActivityLog(
+            activityType = activityType,
+            transitionType =  "Enter" ,
+            timestamp = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
         )
+        CoroutineScope(Dispatchers.IO).launch {
+            dao.insert(log)
+        }
     }
 
     private fun scheduleDailyNotification() {
@@ -687,7 +702,7 @@ companion object{
         }
         val log = ActivityLog(
             activityType = activityType,
-            transitionType = if (event.transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) "Enter" else "Exit",
+            transitionType = if (event.transitionType == ACTIVITY_TRANSITION_ENTER) "Enter" else "Exit",
             timestamp = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
         )
         CoroutineScope(Dispatchers.IO).launch {

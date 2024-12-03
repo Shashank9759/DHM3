@@ -1,10 +1,11 @@
-package com.example.dhm20.Data
+package com.example.dhm20.Data.DAOs
 
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import com.example.dhm20.Data.Entities.AudioLog
 
 
 @Dao
