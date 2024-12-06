@@ -158,13 +158,15 @@ fun HomeScreen(navController: NavHostController, auth: FirebaseAuth) {
     }
 }
 
-
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun permissionScreen(initialPermissionsState:MultiplePermissionsState,
-                     backgroundPermissionState:PermissionState, innerPadding:PaddingValues,
-                   context: Context,navController: NavHostController){
-
+fun permissionScreen(
+    initialPermissionsState: MultiplePermissionsState,
+    backgroundPermissionState: PermissionState,
+    innerPadding: PaddingValues,
+    context: Context,
+    navController: NavHostController
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -175,104 +177,100 @@ fun permissionScreen(initialPermissionsState:MultiplePermissionsState,
     ) {
         Spacer(modifier = Modifier.height(20.dp))
 
+        // Initial Permissions
         if (initialPermissionsState.allPermissionsGranted) {
             initialPermissionsGranted = true
         }
 
         if (!initialPermissionsGranted) {
-            // Initial permissions are not granted
+            // Request Initial Permissions
             if (initialPermissionsState.shouldShowRationale) {
                 Text("Permissions are required for the app to function correctly.")
             } else {
                 Text("Please allow the necessary permissions.")
             }
 
-            Button(colors = ButtonDefaults.buttonColors(
-                containerColor = Color.Blue, // Background color of the button
-                contentColor = Color.White   // Text/Icon color inside the button
-            ),onClick = { initialPermissionsState.launchMultiplePermissionRequest() }) {
-                Text(text="Request Initial Permissions")
+            Button(
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Blue,
+                    contentColor = Color.White
+                ),
+                onClick = { initialPermissionsState.launchMultiplePermissionRequest() }
+            ) {
+                Text(text = "Request Initial Permissions")
             }
         } else if (!backgroundPermissionState.status.isGranted) {
-            // Ask for background permission after initial permissions are granted
-            Text(textAlign = TextAlign.Center  , text="Background location permission is required for continuous access.")
+            // Request Background Permission
+            Text(
+                textAlign = TextAlign.Center,
+                text = "Background location permission is required for continuous access."
+            )
 
-            Button(onClick = { backgroundPermissionState.launchPermissionRequest() },
+            Button(
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Blue, // Background color of the button
-                    contentColor = Color.White   // Text/Icon color inside the button
-                )) {
+                    containerColor = Color.Blue,
+                    contentColor = Color.White
+                ),
+                onClick = { backgroundPermissionState.launchPermissionRequest() }
+            ) {
                 Text("Allow Background Location")
             }
-
-        }else if (SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(context, Manifest.permission.FOREGROUND_SERVICE) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(context as Activity, arrayOf(Manifest.permission.POST_NOTIFICATIONS, Manifest.permission.FOREGROUND_SERVICE), 1001)
+        } else if (SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Handle Foreground Permissions (Android 13+)
+            val foregroundPermissions = listOf(
+                Manifest.permission.POST_NOTIFICATIONS,
+                Manifest.permission.FOREGROUND_SERVICE
+            )
+            val missingForegroundPermissions = foregroundPermissions.filter {
+                ActivityCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
             }
-        }else{
+
+            if (missingForegroundPermissions.isNotEmpty()) {
+                Text("Foreground permissions are required for the app to function correctly.")
+
+                Button(
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Blue,
+                        contentColor = Color.White
+                    ),
+                    onClick = {
+                        ActivityCompat.requestPermissions(
+                            context as Activity,
+                            missingForegroundPermissions.toTypedArray(),
+                            1001
+                        )
+                    }
+                ) {
+                    Text("Allow Foreground Permissions")
+                }
+            } else {
+                Text("All permissions granted!")
+
+                LaunchedEffect(Unit) {
+                    startTrackingService(context)
+                    delay(3000)
+                    navController.navigate("toggle_screen")
+                }
+            }
+        } else {
             Text("All permissions granted!")
 
-
             LaunchedEffect(Unit) {
-                // Start the service in a background thread
-                withContext(Dispatchers.IO) {
-                    val serviceIntent = Intent(context, TrackingService::class.java)
-                    if (SDK_INT >= Build.VERSION_CODES.O) {
-                        context.startForegroundService(serviceIntent)
-                        Log.d("vd", "Service started (Foreground)")
-                    } else {
-                        context.startService(serviceIntent)
-                        Log.d("vd", "Service started (Legacy)")
-                    }
-
-
-                }
-
+                startTrackingService(context)
                 delay(3000)
                 navController.navigate("toggle_screen")
             }
-
-
-
         }
-
     }
 }
 
-
-
-
-
-fun startActivityTransitionUpdates(context: Context) {
-    val transitions = listOf(
-        ActivityTransition.Builder().setActivityType(DetectedActivity.IN_VEHICLE)
-            .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER).build(),
-        ActivityTransition.Builder().setActivityType(DetectedActivity.IN_VEHICLE)
-            .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT).build(),
-        ActivityTransition.Builder().setActivityType(DetectedActivity.WALKING)
-            .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER).build(),
-        ActivityTransition.Builder().setActivityType(DetectedActivity.WALKING)
-            .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT).build(),
-        ActivityTransition.Builder().setActivityType(DetectedActivity.RUNNING)
-            .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER).build(),
-        ActivityTransition.Builder().setActivityType(DetectedActivity.RUNNING)
-            .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT).build()
-    )
-
-    val request = ActivityTransitionRequest(transitions)
-    val intent = Intent(context, TransitionReceiver::class.java)
-    val pendingIntent = PendingIntent.getBroadcast(
-        context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-    )
-
-    if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED) {
-        val task = ActivityRecognition.getClient(context).requestActivityTransitionUpdates(request, pendingIntent)
-        task.addOnSuccessListener {
-            Log.d("ActivityTransition", "Activity transitions successfully registered.")
-        }
-        task.addOnFailureListener {
-            Log.e("ActivityTransition", "Failed to register activity transitions: ${it.message}")
-        }
+fun startTrackingService(context: Context) {
+    val serviceIntent = Intent(context, TrackingService::class.java)
+    if (SDK_INT >= Build.VERSION_CODES.O) {
+        context.startForegroundService(serviceIntent)
+        Log.d("vd", "Service started (Foreground)")
+    } else {
+        context.startService(serviceIntent)
+        Log.d("vd", "Service started (Legacy)")
     }
 }
