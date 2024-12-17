@@ -135,6 +135,11 @@ dependencies {
     implementation ("com.google.code.gson:gson:2.11.0")
 
 
+      //lottie
+        implementation ("com.airbnb.android:lottie-compose:6.6.1")
+
+
+
 
 
 }

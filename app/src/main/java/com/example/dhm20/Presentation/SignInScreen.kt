@@ -1,6 +1,7 @@
 package com.example.dhm20.Presentation
 
 import android.content.ContentValues.TAG
+import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
@@ -96,7 +97,8 @@ fun SignInScreen(navController: NavController) {
                     Log.i(TAG, googleIdToken)
 
                     // Sign in with Firebase using the ID token
-                    signInWithGoogle(googleIdToken)
+                    signInWithGoogle(context,googleIdToken)
+
 
                     Toast.makeText(context, "You are signed in!", Toast.LENGTH_SHORT).show()
 
@@ -134,7 +136,17 @@ fun SignInScreen(navController: NavController) {
     }
 }
 
-suspend fun signInWithGoogle(idToken: String) {
+suspend fun signInWithGoogle(context: Context,idToken: String) {
     val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
     Firebase.auth.signInWithCredential(firebaseCredential).await()
+    val firebaseUid = FirebaseAuth.getInstance().currentUser?.uid
+
+    storeIdToken(context,firebaseUid as String)
+}
+fun storeIdToken(context: Context, idToken: String) {
+    val sharedPref = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+    with(sharedPref.edit()) {
+        putString("uid_token", idToken)
+        apply()
+    }
 }

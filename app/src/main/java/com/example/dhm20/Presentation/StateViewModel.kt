@@ -1,24 +1,20 @@
 package com.example.dhm20.Presentation
 
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class StateViewModel: ViewModel() {
-    private var _authState = MutableStateFlow<Boolean>(false)
-    var authState = _authState.asStateFlow()
+class StateViewModel(val savedStateHandle: SavedStateHandle) : ViewModel() {
 
+    // Using SavedStateHandle to store and retrieve data
+    private val _authState = savedStateHandle.getStateFlow("auth_state", false)
+    val authState: StateFlow<Boolean> = _authState
 
-
-
-
-
-    fun updateMessage(newMessage: Boolean) {
-        _authState.value = newMessage
-    }
-    fun getMessage():Boolean{
-        return authState.value;
+    fun updateAuthState(state: Boolean) {
+        // Correct way to update the value in SavedStateHandle
+        savedStateHandle.set("auth_state", state)
     }
 }

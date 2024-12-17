@@ -57,6 +57,7 @@ import com.example.dhm20.Data.Entities.AudioLog
 import com.example.dhm20.Data.Database.LocationDB
 import com.google.android.gms.location.*
 import com.google.android.gms.location.FusedLocationProviderClient
+import android.provider.Settings
 
 import java.util.*
 import com.example.dhm20.Data.Entities.LocationLog
@@ -95,7 +96,7 @@ class TrackingService() : Service() {
         //dev
         initializeServices()
         Log.d("TrackingService", "onCreate: Scheduling daily sync")
-        scheduleDailyNotification()
+        scheduleDailyNotifications()
         Log.d("TrackingService", "onCreate: Starting service")
         scheduleDailySyncAt11PM()
         Log.d("TrackingService", "onCreate: Registering ScreenReceiver")
@@ -346,30 +347,61 @@ class TrackingService() : Service() {
         }
     }
 
-    private fun scheduleDailyNotification() {
+    private fun scheduleDailyNotifications() {
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(this, NotificationReceiver::class.java)
-        val pendingIntent = PendingIntent.getBroadcast(
-            this,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
 
-        // Set the time for 7 PM
-        val calendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 19) // 7 PM in 24-hour format
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
+        // Check if the app can schedule exact alarms
+        if (!alarmManager.canScheduleExactAlarms()) {
+            // Direct user to settings to enable exact alarms
+            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+            startActivity(intent)
+            return
         }
 
-        // Schedule the alarm to repeat every day at 7 PM
-        alarmManager.setRepeating(
-            AlarmManager.RTC_WAKEUP,
-            calendar.timeInMillis,
-            AlarmManager.INTERVAL_DAY,
-            pendingIntent
-        )
+        // Schedule alarms
+        scheduleAlarm(alarmManager, 20, 6, 0, 1001) // First alarm at 7:00 PM
+        scheduleAlarm(alarmManager, 8, 0, 0, 1002) // Second alarm at 8:00 AM
+    }
+
+    private fun scheduleAlarm(
+        alarmManager: AlarmManager,
+        hour: Int,
+        minute: Int,
+        second: Int,
+        requestCode: Int
+    ) {
+        try {
+            val intent = Intent(this, NotificationReceiver::class.java)
+            val pendingIntent = PendingIntent.getBroadcast(
+                this,
+                requestCode,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val calendar = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, hour)
+                set(Calendar.MINUTE, minute)
+                set(Calendar.SECOND, second)
+
+                // Ensure the alarm is set for the future
+                if (timeInMillis <= System.currentTimeMillis()) {
+                    add(Calendar.DAY_OF_MONTH, 1)
+                }
+            }
+
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                calendar.timeInMillis,
+                pendingIntent
+            )
+
+            Log.d("Alarm", "Alarm set for: ${calendar.time}")
+
+        } catch (e: SecurityException) {
+            Log.e("Alarm", "SecurityException: ${e.message}")
+            // Notify the user or log the issue
+        }
     }
 
     private fun startAudioDetection() {
@@ -580,6 +612,19 @@ class NotificationReceiver : BroadcastReceiver() {
                 notificationManager.createNotificationChannel(channel)
             }
 
+            // Create an Intent to open the activity with the composable
+            val notificationIntent = Intent(it, MainActivity::class.java)
+            notificationIntent.putExtra("Survey","")
+            notificationIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+
+            // Wrap the Intent in a PendingIntent
+            val pendingIntent = PendingIntent.getActivity(
+                it,
+                0,
+                notificationIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
             // Create the notification
             val notification = NotificationCompat.Builder(it, channelId)
                 .setSmallIcon(R.drawable.ic_notification) // Replace with your app's notification icon
@@ -587,6 +632,7 @@ class NotificationReceiver : BroadcastReceiver() {
                 .setContentText("Please complete your daily health test.")
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
                 .build()
 
             // Show the notification

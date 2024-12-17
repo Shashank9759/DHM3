@@ -8,29 +8,35 @@ import com.example.dhm20.Data.Database.AppDatabase
 import com.example.dhm20.Data.Database.AppUsageDB
 import com.example.dhm20.Data.Database.AudioDB
 import com.example.dhm20.Data.Database.LocationDB
+import com.example.dhm20.Data.Database.SurveyDb
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class SyncWorker(appContext: Context, workerParams: WorkerParameters) : CoroutineWorker(appContext, workerParams) {
+class SyncWorker(val appContext: Context, workerParams: WorkerParameters) : CoroutineWorker(appContext, workerParams) {
     private val firebaseDatabase = FirebaseDatabase.getInstance().reference
     private val db = AppDatabase.getInstance(applicationContext)
     private val audiodb = AudioDB.getInstance(applicationContext)
     private val locationdb = LocationDB.getInstance(applicationContext)
     private val appusagedb = AppUsageDB.getInstance(applicationContext)
+    private val surveydb = SurveyDb.getInstance(applicationContext)
 
     override suspend fun doWork(): Result {
         val logs = db.activityLogDao().getAllLogs()
         val audioLogs = audiodb.audiologDao().getAllLogs()
         val locationLogs = locationdb.locationlogDao().getAllLogs()
         val AppUsageLogs = appusagedb.appusagelogDao().getAllLogs()
+        val SurveyLogs = surveydb.surveyLogDao().getAllLogs()
 
       if((logs==null || logs!!.isEmpty())
           && (audioLogs==null || audioLogs!!.isEmpty())
           && (locationLogs==null || locationLogs!!.isEmpty())
-          && (AppUsageLogs==null || AppUsageLogs!!.isEmpty())) {
+          && (AppUsageLogs==null || AppUsageLogs!!.isEmpty())
+          && (SurveyLogs==null || SurveyLogs!!.isEmpty())
+
+          ) {
           return Result.failure()
 
         }
@@ -39,7 +45,7 @@ class SyncWorker(appContext: Context, workerParams: WorkerParameters) : Coroutin
               Log.d("log@@@@", "log is not null")
               // Iterate over each log and upload to Firebase
               for (log in logs) {
-                  val userId = FirebaseAuth.getInstance().currentUser?.uid ?: "anonymous"
+                  val userId = getIdTokenFromPrefs(appContext) ?: "anonymous"
 
                   try {
                       // Upload log to Firebase
@@ -72,7 +78,7 @@ class SyncWorker(appContext: Context, workerParams: WorkerParameters) : Coroutin
               Log.d("audiolog@@@@", "log is not null")
               // Iterate over each log and upload to Firebase
               for (log in audioLogs) {
-                  val userId = FirebaseAuth.getInstance().currentUser?.uid ?: "anonymous"
+                  val userId = getIdTokenFromPrefs(appContext) ?: "anonymous"
 
                   try {
                       // Upload log to Firebase
@@ -106,7 +112,7 @@ class SyncWorker(appContext: Context, workerParams: WorkerParameters) : Coroutin
               Log.d("locationlog@@@@", "log is not null")
               // Iterate over each log and upload to Firebase
               for (log in locationLogs) {
-                  val userId = FirebaseAuth.getInstance().currentUser?.uid ?: "anonymous"
+                  val userId =getIdTokenFromPrefs(appContext) ?: "anonymous"
 
                   try {
                       // Upload log to Firebase
@@ -138,7 +144,7 @@ class SyncWorker(appContext: Context, workerParams: WorkerParameters) : Coroutin
               Log.d("appusagelog@@@@", "log is not null")
               // Iterate over each log and upload to Firebase
               for (log in AppUsageLogs) {
-                  val userId = FirebaseAuth.getInstance().currentUser?.uid ?: "anonymous"
+                  val userId = getIdTokenFromPrefs(appContext) ?: "anonymous"
 
                   try {
                       // Upload log to Firebase
@@ -176,6 +182,45 @@ class SyncWorker(appContext: Context, workerParams: WorkerParameters) : Coroutin
               }
 
           }
+
+
+          if (SurveyLogs!=null && SurveyLogs!!.isNotEmpty()) {
+              Log.d("surveylog@@@@", "log is not null")
+              // Iterate over each log and upload to Firebase
+              for (log in SurveyLogs) {
+                  val userId = getIdTokenFromPrefs(appContext) ?: "anonymous"
+
+                  try {
+                     firebaseDatabase.child("users")
+                          .child(userId)
+                          .child("Survey")
+                          .setValue(log)
+                          .addOnSuccessListener {
+                              Log.d("SyncwokerSurvey","Succesfull")
+                              CoroutineScope(Dispatchers.IO).launch {
+                                  surveydb.surveyLogDao().delete(log)
+                              }
+                          }
+                          .addOnFailureListener {
+
+                              Log.d("SyncwokerSurvey","unSuccesfull  - ${it.message}")
+
+
+                          }
+
+
+
+
+
+                  } catch (e: Exception) {
+                      Log.e("SyncWorker", "Error survey syncing log: ${e.message}")
+                      //  return Result.failure()  // Failure on syncing any log
+                  }
+              }
+
+          }
+
+
           return Result.success()
 
       }
@@ -196,6 +241,9 @@ class SyncWorker(appContext: Context, workerParams: WorkerParameters) : Coroutin
         // Check if the package is in the map, otherwise use the default logic
         return knownApps[packageName] ?: packageName.substringAfterLast(".")
     }
-
+    fun getIdTokenFromPrefs(context: Context): String? {
+        val sharedPref = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+        return sharedPref.getString("uid_token", null)
+    }
 }
 
