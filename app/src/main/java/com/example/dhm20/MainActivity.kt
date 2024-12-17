@@ -27,8 +27,9 @@ import com.example.dhm20.ui.theme.DHM20Theme
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.StateFlow
 import androidx.navigation.NavBackStackEntry
+import com.example.dhm20.Utils.feelingsList
 
- var   auth = FirebaseAuth.getInstance()
+var   auth = FirebaseAuth.getInstance()
 class MainActivity : ComponentActivity() {
 
 
@@ -139,8 +140,8 @@ class MainActivity : ComponentActivity() {
             }
 
             composable("survey") {
-                val list= listOf("what is your name","kfhiuhf","fgfrifhkifu","fjgkhkhku")
-                SurveyScreen(list,navController)
+
+                SurveyScreen(feelingsList,navController)
 
 
             }
