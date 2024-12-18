@@ -194,6 +194,7 @@ class SyncWorker(val appContext: Context, workerParams: WorkerParameters) : Coro
                      firebaseDatabase.child("users")
                           .child(userId)
                           .child("Survey")
+                         .child(log.timestamp)
                           .setValue(log)
                           .addOnSuccessListener {
                               Log.d("SyncwokerSurvey","Succesfull")

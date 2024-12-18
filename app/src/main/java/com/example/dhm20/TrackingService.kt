@@ -359,7 +359,7 @@ class TrackingService() : Service() {
         }
 
         // Schedule alarms
-        scheduleAlarm(alarmManager, 19, 0, 0, 1001) // First alarm at 7:00 PM
+        scheduleAlarm(alarmManager, 23, 39, 0, 1001) // First alarm at 7:00 PM
         scheduleAlarm(alarmManager, 8, 0, 0, 1002) // Second alarm at 8:00 AM
     }
 
