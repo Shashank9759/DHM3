@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "567697618821",
+    "firebase_url": "https://dhm2-7ea48-default-rtdb.firebaseio.com",
     "project_id": "dhm2-7ea48",
     "storage_bucket": "dhm2-7ea48.firebasestorage.app"
   },
@@ -14,11 +15,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "567697618821-kgq2rrsrg1kenjsr3q9c0r8o80k82tjt.apps.googleusercontent.com",
+          "client_id": "567697618821-uktrmmvr92ilura2a61qv5bp8h98jd8e.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.example.dhm20",
-            "certificate_hash": "4713a054c95a6e5020f076d617cda86c420321c2"
+            "certificate_hash": "013943f6c7f9227cb21ca82867b6bc5c30cd9f3b"
           }
         },
         {

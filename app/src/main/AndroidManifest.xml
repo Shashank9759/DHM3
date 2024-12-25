@@ -15,7 +15,6 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_TYPE_HEALTH"/>
     <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS"/>
 
-
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
@@ -24,7 +23,8 @@
     <!-- Permission for Microphone -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
-
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_TYPE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_TYPE_MICROPHONE" />
 
     <!-- Permission for sleep api -->
     <uses-permission android:name="android.permission.BODY_SENSORS"/>
@@ -33,6 +33,12 @@
     <!-- Permission for Phone Usage (Package Usage Stats) -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
+
+
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
 
     <application
 
@@ -49,8 +55,15 @@
         <service
             android:name=".TrackingService"
             android:foregroundServiceType="health|location|microphone"
-            android:exported="false"/>
-
+            android:exported="true"/>
+        <receiver android:name=".SyncReceiver" />
+        <receiver android:name=".NotificationReceiver" />
+        <receiver android:name=".RebootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -64,6 +77,7 @@
         <receiver
             android:name=".TransitionReceiver2"
             android:exported="true" />
+
         <receiver android:name=".Data.InternetConnectivityReceiver"
             android:exported="true">
             <intent-filter>

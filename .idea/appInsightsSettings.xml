@@ -10,9 +10,9 @@
               <option name="connection">
                 <ConnectionSetting>
                   <option name="appId" value="com.example.dhm20" />
-                  <option name="mobileSdkAppId" value="1:567697618821:android:2ec3f637187e29c3daf6ec" />
-                  <option name="projectId" value="dhm2-7ea48" />
-                  <option name="projectNumber" value="567697618821" />
+                  <option name="mobileSdkAppId" value="1:461259927203:android:6bc3f0faa9b608e335d916" />
+                  <option name="projectId" value="dhm2-20b70" />
+                  <option name="projectNumber" value="461259927203" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

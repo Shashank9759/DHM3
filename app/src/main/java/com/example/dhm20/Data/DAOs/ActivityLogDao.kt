@@ -1,13 +1,12 @@
-package com.example.dhm20.Data
+package com.example.dhm20.Data.DAOs
 
 
-import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.example.dhm20.Data.ActivityLog
+import com.example.dhm20.Data.Entities.ActivityLog
 
 @Dao
 interface ActivityLogDao {

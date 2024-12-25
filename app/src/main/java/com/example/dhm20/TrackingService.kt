@@ -1,7 +1,6 @@
 package com.example.dhm20
 
 
-import androidx.compose.ui.platform.LocalContext
 import android.Manifest
 import android.app.Activity
 import android.app.Notification
@@ -23,14 +22,9 @@ import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.MutableLiveData
-import com.example.dhm20.Data.ActivityLog
-import com.example.dhm20.Data.AppDatabase
-import com.example.dhm20.Presentation.StateViewModel
+import com.example.dhm20.Data.Entities.ActivityLog
+import com.example.dhm20.Data.Database.AppDatabase
 import com.example.dhm20.Presentation.toggleStates
-import com.example.dhm20.R
-import com.example.dhm20.SleepReceiver.Companion.logSleepEvent
-import com.example.dhm20.TransitionReceiver2.Companion.logTransitionEvent
 //import com.example.dhm20.TransitionReceiver
 import com.google.android.gms.location.ActivityRecognition
 import com.google.android.gms.location.ActivityTransition
@@ -42,7 +36,6 @@ import com.google.android.gms.location.DetectedActivity
 import com.google.android.gms.location.SleepSegmentEvent
 import com.google.android.gms.location.SleepSegmentRequest
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -51,12 +44,44 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import android.app.*
+import android.app.usage.UsageStatsManager
+import android.content.*
+import android.media.AudioFormat
+import android.media.AudioRecord
+import android.media.MediaRecorder
+import com.example.dhm20.Data.Database.AppUsageDB
+import com.example.dhm20.Data.Entities.AppUsageLog
+import com.example.dhm20.Data.Database.AudioDB
+import com.example.dhm20.Data.Entities.AudioLog
+import com.example.dhm20.Data.Database.LocationDB
+import com.google.android.gms.location.*
+import com.google.android.gms.location.FusedLocationProviderClient
+import android.provider.Settings
+
+import java.util.*
+import com.example.dhm20.Data.Entities.LocationLog
+data class AppUsageData(var openCount: Int = 0, var totalDuration: Long = 0)
+
+private var currentActivity = "Still"
 
 
 class TrackingService() : Service() {
     private val firebaseDatabase = FirebaseDatabase.getInstance().reference
     lateinit var notification:Notification
 
+    //dev
+    private lateinit var usageStatsManager: UsageStatsManager
+    private val dailyAppUsage = mutableMapOf<String, AppUsageData>()
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var locationCallback: LocationCallback
+    private var audioRecord: AudioRecord? = null
+    private var isRecording = false
+    private var screenOnTime = 0L
+    private var screenOnStartTime = 0L
+    private val screenReceiver = ScreenReceiver()
+    private  val syncInterval= 5000L
+    //devend
 
     val notificationId = 404
     val handler=Handler(Looper.getMainLooper())
@@ -68,11 +93,38 @@ class TrackingService() : Service() {
         startActivityTransitionUpdates(this)
         requestSleepUpdates(this)
 
-
-
+        //dev
+        initializeServices()
+        Log.d("TrackingService", "onCreate: Scheduling daily sync")
+        scheduleDailyNotifications()
+        Log.d("TrackingService", "onCreate: Starting service")
+        scheduleDailySyncAt11PM()
+        Log.d("TrackingService", "onCreate: Registering ScreenReceiver")
+        registerScreenReceiver()
+        Log.d("TrackingService", "onCreate: Service initialization complete")
+        //devend
 
     }
+    //dev
+    private fun initializeServices() {
+        usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        Log.d("TrackingService", "initializeServices: UsageStatsManager initialized")
+    }
 
+    private fun registerScreenReceiver() {
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_SCREEN_OFF)
+        }
+        registerReceiver(screenReceiver, filter)
+        Log.d("TrackingService", "registerScreenReceiver: ScreenReceiver registered")
+    }
+    private fun unregisterScreenReceiver() {
+        unregisterReceiver(screenReceiver)
+        Log.d("TrackingService", "unregisterScreenReceiver: ScreenReceiver unregistered")
+    }
+
+    //devend
 
     private fun startForegroundServiceWithNotification() {
         val channelId = "tracking_service_channel"
@@ -117,12 +169,12 @@ class TrackingService() : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-Log.d("onstartcommenad","working")
+    Log.d("onstartcommenad","working")
         val trans=ActivityTransitionEvent(DetectedActivity.RUNNING,ACTIVITY_TRANSITION_ENTER,0L)
         val sleepEvent = SleepSegmentEvent(1625000000000L, 1625030000000L, SleepSegmentEvent.STATUS_SUCCESSFUL, 0,0)
 
 
-        logTransitionEvent(trans,this)
+    //    logTransitionEvent(trans,this)
 //        logTransitionEvent(trans,this)
 //        logSleepEvent(sleepEvent,this)
 
@@ -135,8 +187,313 @@ Log.d("onstartcommenad","working")
 //
 //        }
 //        handler.postDelayed(toastRunnable,1000)
+
+
+        //dev
+        startActivityTransitionUpdates(this)
+        startPeriodicSync(this)
+        startAudioDetection()
+        startLocationUpdates()
+
+
+        if (intent?.getBooleanExtra("run_sync", false) == true) {
+            aggregateAppUsageData()
+            syncAppUsageDataToRoomDB()
+        }
         return START_STICKY
+        //devend
     }
+
+
+    //dev
+    private inner class ScreenReceiver : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                Intent.ACTION_SCREEN_ON -> {
+                    screenOnStartTime = System.currentTimeMillis()
+                    Log.d("ScreenReceiver", "onReceive: Screen ON detected at $screenOnStartTime")
+                }
+                Intent.ACTION_SCREEN_OFF -> {
+                    if (screenOnStartTime != 0L) {
+                        screenOnTime += System.currentTimeMillis() - screenOnStartTime
+                        screenOnStartTime = 0L
+                        Log.d("ScreenReceiver", "onReceive: Screen OFF. Accumulated screen time: $screenOnTime ms")
+                    }
+                }
+            }
+        }
+    }
+    private fun aggregateAppUsageData() {
+        Log.d("TrackingService", "aggregateAppUsageData: Aggregating app usage data")
+        val startTime = System.currentTimeMillis() - AlarmManager.INTERVAL_DAY
+        Log.d("TrackingService", "aggregateAppUsageData: Querying usage stats from $startTime")
+        val usageStatsList = usageStatsManager.queryUsageStats(
+            UsageStatsManager.INTERVAL_DAILY, startTime, System.currentTimeMillis()
+        )
+        for (usageStat in usageStatsList) {
+            Log.d("TrackingService", "aggregateAppUsageData: Processing app ${usageStat.packageName}")
+            val appUsageData = dailyAppUsage.getOrPut(usageStat.packageName) { AppUsageData() }
+            if (usageStat.totalTimeInForeground > 0) {
+                appUsageData.openCount += 1
+                appUsageData.totalDuration += usageStat.totalTimeInForeground
+                Log.d(
+                    "TrackingService", "aggregateAppUsageData: App ${usageStat.packageName} - " +
+                            "Opened: ${appUsageData.openCount}, Total Duration: ${appUsageData.totalDuration} ms"
+                )
+            }
+        }
+    }
+    private fun syncAppUsageDataToRoomDB() {
+//        Log.d("TrackingService", "syncAppUsageDataToFirebase: Starting data sync")
+//        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: run {
+//            Log.w("TrackingService", "syncAppUsageDataToFirebase: User ID is null, aborting sync")
+//            return
+//        }
+//        val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+//        val userRef = firebaseDatabase.child("users").child(userId).child("phone_usage").child(date)
+//
+//        Log.d("TrackingService", "syncAppUsageDataToFirebase: Syncing screen time: $screenOnTime ms")
+//        userRef.child("screen_time").setValue(screenOnTime)
+//
+//
+//        dailyAppUsage.forEach { (packageName, appData) ->
+//            val simplifiedAppName = simplifyAppName(packageName)
+//            Log.d(
+//                "TrackingService", "syncAppUsageDataToFirebase: App $simplifiedAppName - " +
+//                        "Opened: ${appData.openCount} times, Duration: ${appData.totalDuration} ms"
+//            )
+//            val appRef = userRef.child("apps").child(simplifiedAppName)
+//            appRef.child("opened").setValue(appData.openCount)
+//            appRef.child("aggregated_duration").setValue(appData.totalDuration)
+//        }
+//
+//        Log.d("TrackingService", "syncAppUsageDataToFirebase: Data sync complete for user $userId")
+
+        if(!(toggleStates["App Sync"]?:false)){
+            //     Toast.makeText(context,"Receiver ${activityType} , ${toggleStates[activityType].toString()}",
+            //     Toast.LENGTH_SHORT).show();
+            return
+        }
+        val usageMap: Map<String, List<Long>> = dailyAppUsage.mapValues { (_, appData) ->
+            listOf(appData.openCount.toLong(), appData.totalDuration)
+        }
+        val db= AppUsageDB.getInstance(this)
+        val dao=db.appusagelogDao()
+
+
+        val log= AppUsageLog(
+            usageMap=usageMap,
+            screenOnTime = screenOnTime,
+             date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        )
+            Log.d("TrackingService", "syncAppUsageDataToRoomdb: Log: $log")
+        CoroutineScope(Dispatchers.IO).launch {
+            dao.insert(log)
+        }
+
+
+    }
+
+
+    private fun scheduleDailySyncAt11PM() {
+        Log.d("TrackingService", "scheduleDailySyncAt11PM: Setting up daily sync alarm")
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(this, SyncReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val calendar = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            if (timeInMillis <= System.currentTimeMillis()) {
+                add(Calendar.DAY_OF_YEAR, 1)
+            }
+        }
+
+        Log.d("TrackingService", "scheduleDailySyncAt11PM: Alarm set for ${calendar.time}")
+        alarmManager.setRepeating(
+            AlarmManager.RTC_WAKEUP,
+            calendar.timeInMillis,
+            AlarmManager.INTERVAL_DAY,
+            pendingIntent
+        )
+        Log.d("TrackingService", "scheduleDailySyncAt11PM: Daily sync alarm scheduled")
+    }
+
+    private fun startPeriodicSync(context:Context) {
+        handler.postDelayed({ syncActivityData(currentActivity,context) }, syncInterval)
+    }
+
+    private fun syncActivityData(activityType: String,context:Context) {
+//        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+//        firebaseDatabase.child("users").child(userId).child("activity_transitions").push().setValue(
+//            mapOf(
+//                "activity" to activityType,
+//                "timestamp" to SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+//            )
+//        )
+
+        val db = AppDatabase.getInstance(context)
+        val dao = db.activityLogDao()
+        val log = ActivityLog(
+            activityType = activityType,
+            transitionType =  "Enter" ,
+            timestamp = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
+        )
+        CoroutineScope(Dispatchers.IO).launch {
+            dao.insert(log)
+        }
+    }
+
+    private fun scheduleDailyNotifications() {
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        // Check if the app can schedule exact alarms
+        if (!alarmManager.canScheduleExactAlarms()) {
+            // Direct user to settings to enable exact alarms
+            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+            startActivity(intent)
+            return
+        }
+
+        // Schedule alarms
+        scheduleAlarm(alarmManager, 23, 39, 0, 1001) // First alarm at 7:00 PM
+        scheduleAlarm(alarmManager, 8, 0, 0, 1002) // Second alarm at 8:00 AM
+    }
+
+    private fun scheduleAlarm(
+        alarmManager: AlarmManager,
+        hour: Int,
+        minute: Int,
+        second: Int,
+        requestCode: Int
+    ) {
+        try {
+            val intent = Intent(this, NotificationReceiver::class.java)
+            val pendingIntent = PendingIntent.getBroadcast(
+                this,
+                requestCode,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val calendar = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, hour)
+                set(Calendar.MINUTE, minute)
+                set(Calendar.SECOND, second)
+
+                // Ensure the alarm is set for the future
+                if (timeInMillis <= System.currentTimeMillis()) {
+                    add(Calendar.DAY_OF_MONTH, 1)
+                }
+            }
+
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                calendar.timeInMillis,
+                pendingIntent
+            )
+
+            Log.d("Alarm", "Alarm set for: ${calendar.time}")
+
+        } catch (e: SecurityException) {
+            Log.e("Alarm", "SecurityException: ${e.message}")
+            // Notify the user or log the issue
+        }
+    }
+
+    private fun startAudioDetection() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) return
+        val bufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
+        audioRecord = AudioRecord(MediaRecorder.AudioSource.MIC, SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSize).apply { startRecording() }
+        isRecording = true
+        Thread { continuouslyMonitorAudio(bufferSize) }.start()
+    }
+
+    private fun continuouslyMonitorAudio(bufferSize: Int) {
+        val audioBuffer = ShortArray(bufferSize)
+        while (isRecording) {
+            val readSize = audioRecord?.read(audioBuffer, 0, bufferSize) ?: 0
+            if (readSize > 0) {
+                syncAudioState((audioBuffer.maxOrNull()?.toInt() ?: 0) > CONVERSATION_THRESHOLD)
+                Thread.sleep(1000)
+            }
+        }
+    }
+
+    private fun syncAudioState(isConversationDetected: Boolean) {
+        val db = AudioDB.getInstance(this)
+        val dao = db.audiologDao()
+        if(!(toggleStates["Microphone"]?:false)){
+            //     Toast.makeText(context,"Receiver ${activityType} , ${toggleStates[activityType].toString()}",
+            //     Toast.LENGTH_SHORT).show();
+            return
+        }
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+//        firebaseDatabase.child("users").child(userId).child("audio_data").push().setValue(
+//            mapOf(
+//                "conversation" to if (isConversationDetected) 1 else 0,
+//                "timestamp" to SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
+//            )
+//        )
+
+        val log = AudioLog(
+            conversation =if (isConversationDetected) 1 else 0,
+
+            timestamp = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
+        )
+        Log.d("audio_log",log.toString())
+        CoroutineScope(Dispatchers.IO).launch {
+            dao.insert(log)
+        }
+    }
+
+    private fun startLocationUpdates() {
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 60000).build()
+        locationCallback = object : LocationCallback() {
+            override fun onLocationResult(locationResult: LocationResult) {
+                locationResult.locations.forEach { location ->
+                    logLocationData(location.latitude, location.longitude)
+                }
+            }
+        }
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, mainLooper)
+        }
+    }
+
+    private fun logLocationData(latitude: Double, longitude: Double) {
+        val db = LocationDB.getInstance(this)
+        val dao = db.locationlogDao()
+        if(!(toggleStates["Location"]?:false)){
+            //     Toast.makeText(context,"Receiver ${activityType} , ${toggleStates[activityType].toString()}",
+            //     Toast.LENGTH_SHORT).show();
+            return
+        }
+  //      val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+//        firebaseDatabase.child("users").child(userId).child("gps_data").push().setValue(
+//            mapOf(
+//                "latitude" to latitude,
+//                "longitude" to longitude,
+//                "timestamp" to SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
+//            )
+//        )
+        val log = LocationLog(
+            latitude =latitude,
+             longitude = longitude,
+            timestamp = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
+        )
+        CoroutineScope(Dispatchers.IO).launch {
+            dao.insert(log)
+        }
+    }
+
+
+    //devend
+
 
     fun startActivityTransitionUpdates(context: Context) {
         val transitions = listOf(
@@ -171,15 +528,16 @@ Log.d("onstartcommenad","working")
         }
     }
     private fun requestSleepUpdates(context: Context) {
+        Intent(context, SleepReceiver::class.java)
         // Check if the ACTIVITY_RECOGNITION permission is granted
         if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED) {
             try {
                 val sleepPendingIntent = PendingIntent.getBroadcast(
                     context,
                     1,
-                    Intent(context, SleepReceiver::class.java),
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-                )
+                    Intent(context, SleepReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+                 )
+
                 val sleepSegmentRequest = SleepSegmentRequest.getDefaultSleepSegmentRequest()
                 val task = ActivityRecognition.getClient(context).requestSleepSegmentUpdates(sleepPendingIntent,sleepSegmentRequest)
 
@@ -201,8 +559,107 @@ Log.d("onstartcommenad","working")
         }
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        fusedLocationClient.removeLocationUpdates(locationCallback)
+        audioRecord?.apply { stop(); release() }
+        isRecording = false
+        handler.removeCallbacksAndMessages(null)
+        unregisterScreenReceiver()
+
+
+    }
+
+    companion object {
+        private const val SAMPLE_RATE = 44100
+        private const val CONVERSATION_THRESHOLD = 2000
+    }
+
     override fun onBind(intent: Intent?): IBinder? {
         return null
+    }
+}
+
+
+class SyncReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent?) {
+        // Start the service to execute the sync function at 11 PM
+        context?.let {
+            val serviceIntent = Intent(it, TrackingService::class.java)
+            serviceIntent.putExtra("run_sync", true) // Extra flag to trigger sync
+            it.startService(serviceIntent)
+            Log.d("SyncReceiver", "Triggered daily sync at 11 PM")
+        }
+    }
+}
+
+
+class NotificationReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent?) {
+        context?.let {
+            val notificationManager = it.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val channelId = "daily_test_notification_channel"
+
+            // Create notification channel if it doesn't exist (for Android 8.0 and above)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    channelId,
+                    "Daily Test Notification",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Reminder to take your daily test"
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            // Create an Intent to open the activity with the composable
+            val notificationIntent = Intent(it, MainActivity::class.java)
+            notificationIntent.putExtra("Survey","")
+            notificationIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+
+            // Wrap the Intent in a PendingIntent
+            val pendingIntent = PendingIntent.getActivity(
+                it,
+                0,
+                notificationIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            // Create the notification
+            val notification = NotificationCompat.Builder(it, channelId)
+                .setSmallIcon(R.drawable.ic_notification) // Replace with your app's notification icon
+                .setContentTitle("Time for Your Daily Test")
+                .setContentText("Please complete your daily health test.")
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .build()
+
+            // Show the notification
+            notificationManager.notify(1001, notification)
+        }
+    }
+}
+
+
+class RebootReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent?) {
+        if (intent?.action == Intent.ACTION_BOOT_COMPLETED) {
+            context?.let {
+                // Start TrackingService to reschedule the notification
+                val trackingServiceIntent = Intent(it, TrackingService::class.java)
+                it.startService(trackingServiceIntent)
+
+                // Start any other foreground services needed, such as location updates or audio recording
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    it.startForegroundService(trackingServiceIntent)
+                } else {
+                    it.startService(trackingServiceIntent)
+                }
+
+                Log.d("RebootReceiver", "Foreground services started after reboot")
+            }
+        }
     }
 }
 
@@ -274,7 +731,7 @@ companion object{
 //            }
 
 
-        toggleStates
+
 
 
         val activityType=when (event.activityType) {
@@ -291,7 +748,7 @@ companion object{
         }
         val log = ActivityLog(
             activityType = activityType,
-            transitionType = if (event.transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) "Enter" else "Exit",
+            transitionType = if (event.transitionType == ACTIVITY_TRANSITION_ENTER) "Enter" else "Exit",
             timestamp = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
         )
         CoroutineScope(Dispatchers.IO).launch {

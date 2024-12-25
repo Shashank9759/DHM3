@@ -5,8 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import android.widget.Toast
-import com.example.dhm20.Data.ActivityLog
-import com.example.dhm20.Data.AppDatabase
+import com.example.dhm20.Data.Entities.ActivityLog
+import com.example.dhm20.Data.Database.AppDatabase
 import com.example.dhm20.Presentation.toggleStates
 import com.google.android.gms.location.SleepSegmentEvent
 import kotlinx.coroutines.CoroutineScope
