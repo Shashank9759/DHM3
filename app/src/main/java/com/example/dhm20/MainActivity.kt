@@ -5,6 +5,7 @@ import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -18,15 +19,20 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.dhm20.Data.InternetConnectivityReceiver
 import com.example.dhm20.Presentation.HomeScreen
+import com.example.dhm20.Presentation.ScoreScreen
 import com.example.dhm20.Presentation.SignInScreen
 import com.example.dhm20.Presentation.StateViewModel
+import com.example.dhm20.Presentation.SurveyScreen
 import com.example.dhm20.ui.theme.DHM20Theme
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.StateFlow
+import androidx.navigation.NavBackStackEntry
+import com.example.dhm20.Utils.feelingsList
 
+var   auth = FirebaseAuth.getInstance()
 class MainActivity : ComponentActivity() {
 
-    private lateinit var auth: FirebaseAuth
+
     private lateinit var internetConnectivityReceiver: InternetConnectivityReceiver
 
     // StateFlow to hold the authentication state
@@ -40,19 +46,25 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+
+
+
         internetConnectivityReceiver = InternetConnectivityReceiver()
-        auth = FirebaseAuth.getInstance()
+  //    auth = FirebaseAuth.getInstance()
+
+
 
         // Check if user is already logged in
         if (auth.currentUser != null) {
             if (shouldForceLogout(this)) { // Optional condition based on your logic
-                auth.signOut()
-                viewmodel.updateMessage(false) // Navigate to Login screen
+               // auth.signOut()
+                viewmodel.updateAuthState(false) // Navigate to Login screen
             } else {
-                viewmodel.updateMessage(true) // User is signed in
+                viewmodel.updateAuthState(true) // User is signed in
             }
         }
-        Log.d("logstate",viewmodel.getMessage().toString())
+     //  Log.d("logstate",viewmodel.updateAuthState().toString())
 
 
 
@@ -63,7 +75,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AppNavigation(viewmodel.authState, auth)
+                    AppNavigation(auth)
                 }
             }
         }
@@ -98,18 +110,52 @@ class MainActivity : ComponentActivity() {
         // Unregister the receiver in onStop to avoid leaks when the app is not active
         unregisterReceiver(internetConnectivityReceiver)
     }
+    @Composable
+    fun AppNavigation( auth: FirebaseAuth) {
+        val navController= rememberNavController()
+        val isLoggedIn by viewmodel.authState.collectAsState()
+      //  Toast.makeText(this,isLoggedIn.toString(),Toast.LENGTH_LONG).show()
+        var startDestination:String;
+        if(intent.hasExtra("Survey")){
+            startDestination="survey"
+             viewmodel.updateAuthState(true)
+
+            }else{
+            if (isLoggedIn){
+                startDestination= "home"
+            } else{
+                startDestination=  "sign_in"
+            }
+
+        }
 
 
-}
 
-@Composable
-fun AppNavigation(authState: StateFlow<Boolean>, auth: FirebaseAuth) {
-    val navController: NavHostController = rememberNavController()
-    val isLoggedIn by authState.collectAsState()
+        NavHost(navController = navController, startDestination = startDestination) {
+            composable("sign_in") { SignInScreen(navController) }
+            composable("home") {
+                HomeScreen(navController, auth)
 
-    NavHost(navController = navController, startDestination = if (isLoggedIn) "home" else "sign_in") {
-        composable("sign_in") { SignInScreen(navController) }
-        composable("home") { HomeScreen(navController, auth) }
 
+            }
+
+            composable("survey") {
+
+                SurveyScreen(feelingsList,navController)
+
+
+            }
+
+
+            composable("score/{score}" ) { backStackEntry ->
+                val score = backStackEntry.arguments?.getString("score")?.toIntOrNull() ?: 0
+                ScoreScreen(score,navController)
+
+
+            }
+
+        }
     }
+
+
 }
