@@ -1,6 +1,7 @@
 package com.example.dhm20.Presentation
 
-
+import android.app.AppOpsManager
+import android.provider.Settings
 import com.example.dhm20.TrackingService
 import android.Manifest
 import android.app.Activity
@@ -158,6 +159,36 @@ fun HomeScreen(navController: NavHostController, auth: FirebaseAuth) {
     }
 }
 
+fun redirectToUsageAccessSettings(context: Context) {
+    val appOpsManager = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+    val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        appOpsManager.unsafeCheckOpNoThrow(
+            AppOpsManager.OPSTR_GET_USAGE_STATS,
+            android.os.Process.myUid(),
+            context.packageName
+        )
+    } else {
+        appOpsManager.checkOpNoThrow(
+            AppOpsManager.OPSTR_GET_USAGE_STATS,
+            android.os.Process.myUid(),
+            context.packageName
+        )
+    }
+
+    if (mode != AppOpsManager.MODE_ALLOWED) {
+        Toast.makeText(
+            context,
+            "Usage Access is required. Please grant it to proceed.",
+            Toast.LENGTH_LONG
+        ).show()
+        val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        context.startActivity(intent)
+    }
+}
+
+
+// Updated permissionScreen
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun permissionScreen(
@@ -245,8 +276,8 @@ fun permissionScreen(
                 }
             } else {
                 Text("All permissions granted!")
-
                 LaunchedEffect(Unit) {
+                    redirectToUsageAccessSettings(context)
                     startTrackingService(context)
                     delay(3000)
                     navController.navigate("toggle_screen")
@@ -254,8 +285,8 @@ fun permissionScreen(
             }
         } else {
             Text("All permissions granted!")
-
             LaunchedEffect(Unit) {
+                redirectToUsageAccessSettings(context)
                 startTrackingService(context)
                 delay(3000)
                 navController.navigate("toggle_screen")

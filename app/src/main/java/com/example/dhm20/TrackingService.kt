@@ -494,6 +494,21 @@ class TrackingService() : Service() {
 
     //devend
 
+    //useThis::
+//    private fun startActivityTransitionUpdates(context: Context) {
+//        val transitions = listOf(
+//            DetectedActivity.IN_VEHICLE, DetectedActivity.WALKING, DetectedActivity.RUNNING
+//        ).flatMap { activity ->
+//            listOf(
+//                ActivityTransition.Builder().setActivityType(activity).setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER).build(),
+//                ActivityTransition.Builder().setActivityType(activity).setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT).build()
+//            )
+//        }
+//        val pendingIntent = PendingIntent.getBroadcast(context, 0, Intent(context, TransitionReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
+//        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED) {
+//            ActivityRecognition.getClient(context).requestActivityTransitionUpdates(ActivityTransitionRequest(transitions), pendingIntent)
+//        }
+//    }
 
     fun startActivityTransitionUpdates(context: Context) {
         val transitions = listOf(
@@ -527,6 +542,8 @@ class TrackingService() : Service() {
             }
         }
     }
+
+
     private fun requestSleepUpdates(context: Context) {
         Intent(context, SleepReceiver::class.java)
         // Check if the ACTIVITY_RECOGNITION permission is granted
@@ -681,6 +698,27 @@ class TransitionReceiver2 : BroadcastReceiver() {
                 Log.d("events is getting","null")
             }else{
                 Log.d("events is getting","not null")
+            }
+        }
+    }
+
+
+    class TransitionReceiver : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (ActivityTransitionResult.hasResult(intent)) {
+                val result = ActivityTransitionResult.extractResult(intent)
+                result?.transitionEvents?.forEach { event ->
+                    updateCurrentActivity(event)
+                }
+            }
+        }
+
+        private fun updateCurrentActivity(event: ActivityTransitionEvent) {
+            currentActivity = when (event.activityType) {
+                DetectedActivity.IN_VEHICLE -> "In Vehicle"
+                DetectedActivity.WALKING -> "Walking"
+                DetectedActivity.RUNNING -> "Running"
+                else -> "Still"
             }
         }
     }
