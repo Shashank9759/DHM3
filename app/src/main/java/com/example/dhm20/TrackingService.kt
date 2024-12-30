@@ -86,6 +86,7 @@ class TrackingService() : Service() {
     val notificationId = 404
     val handler=Handler(Looper.getMainLooper())
     var count=0
+
     override fun onCreate() {
         super.onCreate()
         startForegroundServiceWithNotification()
@@ -128,44 +129,131 @@ class TrackingService() : Service() {
 
     private fun startForegroundServiceWithNotification() {
         val channelId = "tracking_service_channel"
+        val notificationManager = getSystemService(NotificationManager::class.java)
 
-
+        // Create Notification Channel
         val channel = NotificationChannel(
             channelId,
             "Tracking Service",
             NotificationManager.IMPORTANCE_HIGH
         )
-        val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager.createNotificationChannel(channel)
-        Log.d("TrackingService", "Notification channel created")
 
-         notification = NotificationCompat.Builder(this, channelId)
+        // Intent to reopen the app when clicked
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Base Notification
+        val baseNotification = NotificationCompat.Builder(this, channelId)
             .setContentTitle("Monitoring Activity")
             .setContentText("Collecting activity transition data")
             .setSmallIcon(R.drawable.ic_notification)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+
+        // Start Foreground Service Notification
+        val notification = baseNotification
             .setOngoing(true)
             .build()
 
-        Log.d("TrackingService", "Attempting to start foreground")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // Android 14+
             startForeground(
-                notificationId, // Notification ID
+                notificationId,
                 notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-                or    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-                or    ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH
-
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION or
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH
             )
         } else {
-            startForeground(notificationId, notification) // For older versions
+            startForeground(notificationId, notification)
         }
 
-        Log.d("TrackingService", "Foreground started")
-      //  startForeground(notificationId, notification)
-     //   startActivityTransitionUpdates(this)
-        Toast.makeText(this, "Foreground service started", Toast.LENGTH_SHORT).show()
+        Log.d("TrackingService", "Foreground service started with notifications")
+    }
 
+    // Notification Helper Methods
+    private fun notifyDataSyncFailure() {
+        val channelId = "tracking_service_channel"
+        val notificationManager = getSystemService(NotificationManager::class.java)
+
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setContentTitle("Data Sync Failed")
+            .setContentText("Unable to sync app data or screen time. Tap to retry.")
+            .setSmallIcon(R.drawable.ic_notification)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+
+        notificationManager.notify(2001, notification)
+    }
+
+    private fun notifyAppRestartRequired() {
+        val channelId = "tracking_service_channel"
+        val notificationManager = getSystemService(NotificationManager::class.java)
+
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setContentTitle("Restart Required")
+            .setContentText("Please restart the app to continue tracking.")
+            .setSmallIcon(R.drawable.ic_notification)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+
+        notificationManager.notify(2002, notification)
+    }
+
+    private fun notifyOfflineDataSaving() {
+        val channelId = "tracking_service_channel"
+        val notificationManager = getSystemService(NotificationManager::class.java)
+
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setContentTitle("Offline Mode")
+            .setContentText("Data is being saved locally. Sync will occur when online.")
+            .setSmallIcon(R.drawable.ic_notification)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+
+        notificationManager.notify(2003, notification)
+    }
+
+    // Example Usage
+    private fun checkScenarios() {
+        // Check for data sync failure
+        if (isDataSyncFailed()) {
+            notifyDataSyncFailure()
+        }
+
+        // Notify restart required (e.g., after reboot)
+        if (isAppRestartRequired()) {
+            notifyAppRestartRequired()
+        }
+
+        // Notify when saving data offline
+        if (isSavingDataOffline()) {
+            notifyOfflineDataSaving()
+        }
+    }
+
+    // Placeholder methods for edge case detection
+    private fun isDataSyncFailed(): Boolean {
+        // Add your logic to check for data sync failure
+        return false
+    }
+
+    private fun isAppRestartRequired(): Boolean {
+        // Add your logic to detect app restart requirements
+        return false
+    }
+
+    private fun isSavingDataOffline(): Boolean {
+        // Add your logic to detect offline data saving
+        return false
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -200,10 +288,58 @@ class TrackingService() : Service() {
             aggregateAppUsageData()
             syncAppUsageDataToRoomDB()
         }
+
+        Log.d("TrackingService", "onStartCommand called.")
+
+        // Check if the service is restarted
+        if (intent == null) {
+            Log.d("TrackingService", "Service restarted by AlarmManager.")
+            showRestartNotification()
+        }
+
         return START_STICKY
         //devend
     }
 
+
+    private fun showRestartNotification() {
+        val channelId = "service_restart_channel"
+        val notificationManager = getSystemService(NotificationManager::class.java)
+
+        // Create notification channel (Android 8.0+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "Service Restart",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifications for service restarts"
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        // Create a PendingIntent to open the app when the notification is clicked
+        val notificationIntent = Intent(this, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            notificationIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Build the notification
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.ic_notification) // Replace with your app's notification icon
+            .setContentTitle("Service Restarted")
+            .setContentText("The Tracking Service has been restarted.")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
+
+        // Show the notification
+        notificationManager.notify(2001, notification)
+    }
 
     //dev
     private inner class ScreenReceiver : BroadcastReceiver() {
@@ -286,7 +422,7 @@ class TrackingService() : Service() {
             screenOnTime = screenOnTime,
              date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         )
-            Log.d("TrackingService", "syncAppUsageDataToRoomdb: Log: $log")
+        Log.d("TrackingService", "syncAppUsageDataToRoomdb: Log: $log")
         CoroutineScope(Dispatchers.IO).launch {
             dao.insert(log)
         }
@@ -304,8 +440,8 @@ class TrackingService() : Service() {
         )
 
         val calendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 23)
-            set(Calendar.MINUTE, 0)
+            set(Calendar.HOUR_OF_DAY, 12)
+            set(Calendar.MINUTE, 37)
             set(Calendar.SECOND, 0)
             if (timeInMillis <= System.currentTimeMillis()) {
                 add(Calendar.DAY_OF_YEAR, 1)
@@ -584,6 +720,25 @@ class TrackingService() : Service() {
         handler.removeCallbacksAndMessages(null)
         unregisterScreenReceiver()
 
+        Log.d("TrackingService", "Service destroyed. Attempting to restart...")
+
+        // Restart logic
+        val restartIntent = Intent(this, TrackingService::class.java)
+        val pendingIntent = PendingIntent.getService(
+            this,
+            1,
+            restartIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        // Schedule restart after 5 seconds
+        alarmManager.set(
+            AlarmManager.RTC_WAKEUP,
+            System.currentTimeMillis() + 5000, // 5-second delay
+            pendingIntent
+        )
+
 
     }
 
@@ -657,26 +812,74 @@ class NotificationReceiver : BroadcastReceiver() {
         }
     }
 }
-
-
 class RebootReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context?, intent: Intent?) {
-        if (intent?.action == Intent.ACTION_BOOT_COMPLETED) {
-            context?.let {
-                // Start TrackingService to reschedule the notification
-                val trackingServiceIntent = Intent(it, TrackingService::class.java)
-                it.startService(trackingServiceIntent)
-
-                // Start any other foreground services needed, such as location updates or audio recording
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    it.startForegroundService(trackingServiceIntent)
-                } else {
-                    it.startService(trackingServiceIntent)
-                }
-
-                Log.d("RebootReceiver", "Foreground services started after reboot")
+    override fun onReceive(context: Context, intent: Intent?) {
+        when (intent?.action) {
+            Intent.ACTION_BOOT_COMPLETED,
+            "android.intent.action.QUICKBOOT_POWERON",
+            "com.htc.intent.action.QUICKBOOT_POWERON" -> {
+                showRebootNotification(context, isQuickBoot = intent.action != Intent.ACTION_BOOT_COMPLETED)
             }
         }
+    }
+
+    private fun showRebootNotification(context: Context, isQuickBoot: Boolean) {
+        val channelId = "reboot_notification_channel"
+        val notificationManager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        // Create notification channel (Android 8.0+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "Reboot Notification",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifications for reboot events"
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        // Create an Intent to open the app
+        val notificationIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            notificationIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Customize notification based on boot type
+        val title = if (isQuickBoot) "Quick Boot Completed" else "Device Restarted"
+        val message = if (isQuickBoot)
+            "Device quick boot completed. Tap to resume your activities."
+        else
+            "Please tap to reopen the app and resume activity tracking."
+
+        // Build the notification
+        val notification = NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .apply {
+                if (isQuickBoot) {
+                    // Add a distinct style for quick boot notifications
+                    setStyle(NotificationCompat.BigTextStyle()
+                        .bigText(message)
+                        .setSummaryText("Quick Boot"))
+                }
+            }
+            .build()
+
+        // Show the notification with different IDs for different boot types
+        val notificationId = if (isQuickBoot) 3002 else 3001
+        notificationManager.notify(notificationId, notification)
     }
 }
 
