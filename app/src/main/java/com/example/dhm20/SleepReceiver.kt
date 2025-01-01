@@ -54,7 +54,6 @@ class SleepReceiver : BroadcastReceiver() {
             }
             val log = ActivityLog(
                 activityType = "Sleep",
-                transitionType = "Sleep detected from ${event.startTimeMillis} to ${event.endTimeMillis}",
                 timestamp = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
             )
             CoroutineScope(Dispatchers.IO).launch {
