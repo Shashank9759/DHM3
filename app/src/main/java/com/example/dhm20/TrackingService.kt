@@ -200,6 +200,14 @@ class TrackingService() : Service() {
             aggregateAppUsageData()
             syncAppUsageDataToRoomDB()
         }
+
+
+        // Check if the service is restarted
+        if (intent == null) {
+            Log.d("TrackingService", "Service restarted by AlarmManager.")
+
+        }
+
         return START_STICKY
         //devend
     }
@@ -583,6 +591,23 @@ class TrackingService() : Service() {
         isRecording = false
         handler.removeCallbacksAndMessages(null)
         unregisterScreenReceiver()
+
+        // Restart logic
+        val restartIntent = Intent(this, TrackingService::class.java)
+        val pendingIntent = PendingIntent.getService(
+            this,
+            1,
+            restartIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        // Schedule restart after 5 seconds
+        alarmManager.set(
+            AlarmManager.RTC_WAKEUP,
+            System.currentTimeMillis() + 5000, // 5-second delay
+            pendingIntent
+        )
 
 
     }
