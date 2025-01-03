@@ -14,6 +14,9 @@ import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class SyncWorker(val appContext: Context, workerParams: WorkerParameters) : CoroutineWorker(appContext, workerParams) {
     private val firebaseDatabase = FirebaseDatabase.getInstance().reference
@@ -142,18 +145,17 @@ class SyncWorker(val appContext: Context, workerParams: WorkerParameters) : Coro
           }
           if (AppUsageLogs!=null && AppUsageLogs!!.isNotEmpty()) {
               Log.d("appusagelog@@@@", "log is not null")
+
               // Iterate over each log and upload to Firebase
               for (log in AppUsageLogs) {
                   val userId = getIdTokenFromPrefs(appContext) ?: "anonymous"
-
+                  val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
                   try {
                       // Upload log to Firebase
                       val userRef = firebaseDatabase.child("users")
                           .child(userId)
                           .child("phone_usage")
-                          .child(log.date)
-
-
+                          .child(date)
 
                       log.usageMap.forEach { (packageName, appData) ->
                           val simplifiedAppName = simplifyAppName(packageName)
@@ -172,7 +174,7 @@ class SyncWorker(val appContext: Context, workerParams: WorkerParameters) : Coro
                           CoroutineScope(Dispatchers.IO).launch {
                               appusagedb.appusagelogDao().delete(log)
                           }
-                      }
+                      }.addOnFailureListener { Log.d("SyncWorker", "Failure synced log: ${it.message}") }
 
 
                   } catch (e: Exception) {

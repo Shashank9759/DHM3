@@ -359,6 +359,7 @@ class TrackingService() : Service() {
             }
         }
     }
+
     private fun aggregateAppUsageData() {
         Log.d("TrackingService", "aggregateAppUsageData: Aggregating app usage data")
         val startTime = System.currentTimeMillis() - AlarmManager.INTERVAL_DAY
@@ -440,9 +441,9 @@ class TrackingService() : Service() {
         )
 
         val calendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 12)
-            set(Calendar.MINUTE, 37)
-            set(Calendar.SECOND, 0)
+            set(Calendar.HOUR_OF_DAY, 16)
+            set(Calendar.MINUTE, 14)
+            set(Calendar.SECOND, 50 )
             if (timeInMillis <= System.currentTimeMillis()) {
                 add(Calendar.DAY_OF_YEAR, 1)
             }
