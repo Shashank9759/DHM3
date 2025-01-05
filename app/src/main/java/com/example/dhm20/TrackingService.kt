@@ -91,7 +91,7 @@ class TrackingService() : Service() {
         startForegroundServiceWithNotification()
 
         startActivityTransitionUpdates(this)
-        requestSleepUpdates(this)
+       // requestSleepUpdates(this)
 
         //dev
         initializeServices()
