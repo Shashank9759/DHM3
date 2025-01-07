@@ -91,7 +91,7 @@ class TrackingService() : Service() {
         startForegroundServiceWithNotification()
 
         startActivityTransitionUpdates(this)
-        requestSleepUpdates(this)
+       // requestSleepUpdates(this)
 
         //dev
         initializeServices()
@@ -200,6 +200,14 @@ class TrackingService() : Service() {
             aggregateAppUsageData()
             syncAppUsageDataToRoomDB()
         }
+
+
+        // Check if the service is restarted
+        if (intent == null) {
+            Log.d("TrackingService", "Service restarted by AlarmManager.")
+
+        }
+
         return START_STICKY
         //devend
     }
@@ -281,7 +289,7 @@ class TrackingService() : Service() {
         val dao=db.appusagelogDao()
 
 
-        val log= AppUsageLog(
+            val log= AppUsageLog(
             usageMap=usageMap,
             screenOnTime = screenOnTime,
              date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -339,7 +347,7 @@ class TrackingService() : Service() {
         val dao = db.activityLogDao()
         val log = ActivityLog(
             activityType = activityType,
-            transitionType =  "Enter" ,
+
             timestamp = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
         )
         CoroutineScope(Dispatchers.IO).launch {
@@ -359,7 +367,7 @@ class TrackingService() : Service() {
         }
 
         // Schedule alarms
-        scheduleAlarm(alarmManager, 23, 39, 0, 1001) // First alarm at 7:00 PM
+        scheduleAlarm(alarmManager, 19, 0, 0, 1001) // First alarm at 7:00 PM
         scheduleAlarm(alarmManager, 8, 0, 0, 1002) // Second alarm at 8:00 AM
     }
 
@@ -584,6 +592,23 @@ class TrackingService() : Service() {
         handler.removeCallbacksAndMessages(null)
         unregisterScreenReceiver()
 
+        // Restart logic
+        val restartIntent = Intent(this, TrackingService::class.java)
+        val pendingIntent = PendingIntent.getService(
+            this,
+            1,
+            restartIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        // Schedule restart after 5 seconds
+        alarmManager.set(
+            AlarmManager.RTC_WAKEUP,
+            System.currentTimeMillis() + 5000, // 5-second delay
+            pendingIntent
+        )
+
 
     }
 
@@ -786,7 +811,6 @@ companion object{
         }
         val log = ActivityLog(
             activityType = activityType,
-            transitionType = if (event.transitionType == ACTIVITY_TRANSITION_ENTER) "Enter" else "Exit",
             timestamp = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
         )
         CoroutineScope(Dispatchers.IO).launch {

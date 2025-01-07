@@ -22,11 +22,11 @@ class SleepReceiver : BroadcastReceiver() {
             val events = SleepSegmentEvent.extractEvents(intent)
             events?.forEach { event ->
                 Log.d("SleepReceiver", "Sleep event: ${event.startTimeMillis} - ${event.endTimeMillis}")
-                Toast.makeText(
-                    context,
-                    "Sleep detected: ${event.startTimeMillis} to ${event.endTimeMillis}",
-                    Toast.LENGTH_SHORT
-                ).show()
+//                Toast.makeText(
+//                    context,
+//                    "Sleep detected: ${event.startTimeMillis} to ${event.endTimeMillis}",
+//                    Toast.LENGTH_SHORT
+//                ).show()
                 logSleepEvent(event,context)
             }
         } else {
@@ -54,7 +54,6 @@ class SleepReceiver : BroadcastReceiver() {
             }
             val log = ActivityLog(
                 activityType = "Sleep",
-                transitionType = "Sleep detected from ${event.startTimeMillis} to ${event.endTimeMillis}",
                 timestamp = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
             )
             CoroutineScope(Dispatchers.IO).launch {
