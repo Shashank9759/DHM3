@@ -1,7 +1,13 @@
 package com.example.dhm20.Data
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
+import android.os.Build
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.example.dhm20.Data.Database.AppDatabase
@@ -9,6 +15,8 @@ import com.example.dhm20.Data.Database.AppUsageDB
 import com.example.dhm20.Data.Database.AudioDB
 import com.example.dhm20.Data.Database.LocationDB
 import com.example.dhm20.Data.Database.SurveyDb
+import com.example.dhm20.MainActivity
+import com.example.dhm20.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.CoroutineScope
@@ -202,6 +210,7 @@ class SyncWorker(val appContext: Context, workerParams: WorkerParameters) : Coro
                               Log.d("SyncwokerSurvey","Succesfull")
                               CoroutineScope(Dispatchers.IO).launch {
                                   surveydb.surveyLogDao().delete(log)
+                                  notifytotheUser(appContext)
                               }
                           }
                           .addOnFailureListener {
@@ -228,6 +237,37 @@ class SyncWorker(val appContext: Context, workerParams: WorkerParameters) : Coro
 
       }
 
+    }
+
+    private fun notifytotheUser(context: Context) {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channelId = "app_Usage_Channel"
+
+        // Create notification channel if it doesn't exist (for Android 8.0 and above)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "App Ussage Notification",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Reminder to take your daily test"
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+
+        // Create the notification
+        val notification = NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(R.drawable.app_logo) // Replace with your app's notification icon
+            .setContentTitle("Your App Usage Data is processed Succesfully")
+
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+
+            .build()
+
+        // Show the notification
+        notificationManager.notify(1005, notification)
     }
 
     private fun simplifyAppName(packageName: String): String {

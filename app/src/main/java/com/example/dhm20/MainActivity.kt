@@ -27,13 +27,20 @@ import com.example.dhm20.ui.theme.DHM20Theme
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.StateFlow
 import androidx.navigation.NavBackStackEntry
+import androidx.work.Constraints
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import com.example.dhm20.Utils.feelingsList
+import java.util.concurrent.TimeUnit
 
 var   auth = FirebaseAuth.getInstance()
 class MainActivity : ComponentActivity() {
 
 
     private lateinit var internetConnectivityReceiver: InternetConnectivityReceiver
+
 
     // StateFlow to hold the authentication state
 
@@ -51,6 +58,7 @@ class MainActivity : ComponentActivity() {
 
 
         internetConnectivityReceiver = InternetConnectivityReceiver()
+
   //    auth = FirebaseAuth.getInstance()
 
 
@@ -89,7 +97,14 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         // Register the receiver in onStart to ensure it's listening when the app is active
         val intentFilter = IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION)
+        schedulePeriodicWork(this)
         registerReceiver(internetConnectivityReceiver, intentFilter)
+    }
+
+    fun schedulePeriodicWork(context: Context) {
+
+
+
     }
 
 

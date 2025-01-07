@@ -288,13 +288,16 @@ class TrackingService() : Service() {
             aggregateAppUsageData()
             syncAppUsageDataToRoomDB()
         }
+        
 
         Log.d("TrackingService", "onStartCommand called.")
 
         // Check if the service is restarted
         if (intent == null) {
             Log.d("TrackingService", "Service restarted by AlarmManager.")
+
             showRestartNotification()
+
         }
 
         return START_STICKY
@@ -418,7 +421,7 @@ class TrackingService() : Service() {
         val dao=db.appusagelogDao()
 
 
-        val log= AppUsageLog(
+            val log= AppUsageLog(
             usageMap=usageMap,
             screenOnTime = screenOnTime,
              date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -476,7 +479,7 @@ class TrackingService() : Service() {
         val dao = db.activityLogDao()
         val log = ActivityLog(
             activityType = activityType,
-            transitionType =  "Enter" ,
+
             timestamp = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
         )
         CoroutineScope(Dispatchers.IO).launch {
@@ -496,7 +499,7 @@ class TrackingService() : Service() {
         }
 
         // Schedule alarms
-        scheduleAlarm(alarmManager, 23, 39, 0, 1001) // First alarm at 7:00 PM
+        scheduleAlarm(alarmManager, 19, 0, 0, 1001) // First alarm at 7:00 PM
         scheduleAlarm(alarmManager, 8, 0, 0, 1002) // Second alarm at 8:00 AM
     }
 
@@ -722,6 +725,7 @@ class TrackingService() : Service() {
         unregisterScreenReceiver()
 
         Log.d("TrackingService", "Service destroyed. Attempting to restart...")
+
 
         // Restart logic
         val restartIntent = Intent(this, TrackingService::class.java)
@@ -990,7 +994,6 @@ companion object{
         }
         val log = ActivityLog(
             activityType = activityType,
-            transitionType = if (event.transitionType == ACTIVITY_TRANSITION_ENTER) "Enter" else "Exit",
             timestamp = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
         )
         CoroutineScope(Dispatchers.IO).launch {
