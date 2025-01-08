@@ -4,9 +4,9 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 @Entity(tableName = "activity_logs")
- public data class ActivityLog(
+public data class ActivityLog(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     @ColumnInfo(name = "activityType") val activityType: String,
-    @ColumnInfo(name = "transitionType") val transitionType: String,
+
     @ColumnInfo(name = "timestamp")val timestamp: String
 )

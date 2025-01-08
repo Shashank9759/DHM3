@@ -92,7 +92,7 @@ class TrackingService() : Service() {
         startForegroundServiceWithNotification()
 
         startActivityTransitionUpdates(this)
-        requestSleepUpdates(this)
+        // requestSleepUpdates(this)
 
         //dev
         initializeServices()
@@ -176,105 +176,14 @@ class TrackingService() : Service() {
         Log.d("TrackingService", "Foreground service started with notifications")
     }
 
-    // Notification Helper Methods
-    private fun notifyDataSyncFailure() {
-        val channelId = "tracking_service_channel"
-        val notificationManager = getSystemService(NotificationManager::class.java)
 
-        val notification = NotificationCompat.Builder(this, channelId)
-            .setContentTitle("Data Sync Failed")
-            .setContentText("Unable to sync app data or screen time. Tap to retry.")
-            .setSmallIcon(R.drawable.ic_notification)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .build()
 
-        notificationManager.notify(2001, notification)
-    }
-
-    private fun notifyAppRestartRequired() {
-        val channelId = "tracking_service_channel"
-        val notificationManager = getSystemService(NotificationManager::class.java)
-
-        val notification = NotificationCompat.Builder(this, channelId)
-            .setContentTitle("Restart Required")
-            .setContentText("Please restart the app to continue tracking.")
-            .setSmallIcon(R.drawable.ic_notification)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .build()
-
-        notificationManager.notify(2002, notification)
-    }
-
-    private fun notifyOfflineDataSaving() {
-        val channelId = "tracking_service_channel"
-        val notificationManager = getSystemService(NotificationManager::class.java)
-
-        val notification = NotificationCompat.Builder(this, channelId)
-            .setContentTitle("Offline Mode")
-            .setContentText("Data is being saved locally. Sync will occur when online.")
-            .setSmallIcon(R.drawable.ic_notification)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .build()
-
-        notificationManager.notify(2003, notification)
-    }
-
-    // Example Usage
-    private fun checkScenarios() {
-        // Check for data sync failure
-        if (isDataSyncFailed()) {
-            notifyDataSyncFailure()
-        }
-
-        // Notify restart required (e.g., after reboot)
-        if (isAppRestartRequired()) {
-            notifyAppRestartRequired()
-        }
-
-        // Notify when saving data offline
-        if (isSavingDataOffline()) {
-            notifyOfflineDataSaving()
-        }
-    }
-
-    // Placeholder methods for edge case detection
-    private fun isDataSyncFailed(): Boolean {
-        // Add your logic to check for data sync failure
-        return false
-    }
-
-    private fun isAppRestartRequired(): Boolean {
-        // Add your logic to detect app restart requirements
-        return false
-    }
-
-    private fun isSavingDataOffline(): Boolean {
-        // Add your logic to detect offline data saving
-        return false
-    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     Log.d("onstartcommenad","working")
         val trans=ActivityTransitionEvent(DetectedActivity.RUNNING,ACTIVITY_TRANSITION_ENTER,0L)
         val sleepEvent = SleepSegmentEvent(1625000000000L, 1625030000000L, SleepSegmentEvent.STATUS_SUCCESSFUL, 0,0)
 
-
-    //    logTransitionEvent(trans,this)
-//        logTransitionEvent(trans,this)
-//        logSleepEvent(sleepEvent,this)
-
-//        val toastRunnable=object:Runnable{
-//            override fun run() {
-//                Toast.makeText(this@TrackingService,"${count}",Toast.LENGTH_SHORT).show()
-//                count++
-//                handler.postDelayed(this,1000)
-//            }
-//
-//        }
-//        handler.postDelayed(toastRunnable,1000)
 
 
         //dev
@@ -476,7 +385,6 @@ class TrackingService() : Service() {
         val dao = db.activityLogDao()
         val log = ActivityLog(
             activityType = activityType,
-            transitionType =  "Enter" ,
             timestamp = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
         )
         CoroutineScope(Dispatchers.IO).launch {
@@ -632,86 +540,55 @@ class TrackingService() : Service() {
     //devend
 
     //useThis::
-//    private fun startActivityTransitionUpdates(context: Context) {
+    private fun startActivityTransitionUpdates(context: Context) {
+        val transitions = listOf(
+            DetectedActivity.IN_VEHICLE, DetectedActivity.WALKING, DetectedActivity.RUNNING
+        ).flatMap { activity ->
+            listOf(
+                ActivityTransition.Builder().setActivityType(activity).setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER).build(),
+                ActivityTransition.Builder().setActivityType(activity).setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT).build()
+            )
+        }
+        val pendingIntent = PendingIntent.getBroadcast(context, 0, Intent(context, TransitionReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
+        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED) {
+            ActivityRecognition.getClient(context).requestActivityTransitionUpdates(ActivityTransitionRequest(transitions), pendingIntent)
+        }
+    }
+
+//    fun startActivityTransitionUpdates(context: Context) {
 //        val transitions = listOf(
-//            DetectedActivity.IN_VEHICLE, DetectedActivity.WALKING, DetectedActivity.RUNNING
-//        ).flatMap { activity ->
-//            listOf(
-//                ActivityTransition.Builder().setActivityType(activity).setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER).build(),
-//                ActivityTransition.Builder().setActivityType(activity).setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT).build()
-//            )
-//        }
-//        val pendingIntent = PendingIntent.getBroadcast(context, 0, Intent(context, TransitionReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
+//            ActivityTransition.Builder().setActivityType(DetectedActivity.IN_VEHICLE)
+//                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER).build(),
+//            ActivityTransition.Builder().setActivityType(DetectedActivity.IN_VEHICLE)
+//                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT).build(),
+//            ActivityTransition.Builder().setActivityType(DetectedActivity.WALKING)
+//                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER).build(),
+//            ActivityTransition.Builder().setActivityType(DetectedActivity.WALKING)
+//                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT).build(),
+//            ActivityTransition.Builder().setActivityType(DetectedActivity.RUNNING)
+//                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER).build(),
+//            ActivityTransition.Builder().setActivityType(DetectedActivity.RUNNING)
+//                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT).build()
+//        )
+//
+//        val request = ActivityTransitionRequest(transitions)
+//        val intent = Intent(context, TransitionReceiver::class.java)
+//        val pendingIntent = PendingIntent.getBroadcast(
+//            context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+//        )
+//
 //        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED) {
-//            ActivityRecognition.getClient(context).requestActivityTransitionUpdates(ActivityTransitionRequest(transitions), pendingIntent)
+//            val task = ActivityRecognition.getClient(context).requestActivityTransitionUpdates(request, pendingIntent)
+//            task.addOnSuccessListener {
+//                Log.d("ActivityTransition2", "Activity transitions successfully registered.")
+//            }
+//            task.addOnFailureListener {
+//                Log.e("ActivityTransition2", "Failed to register activity transitions: ${it.message}")
+//            }
 //        }
 //    }
 
-    fun startActivityTransitionUpdates(context: Context) {
-        val transitions = listOf(
-            ActivityTransition.Builder().setActivityType(DetectedActivity.IN_VEHICLE)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER).build(),
-            ActivityTransition.Builder().setActivityType(DetectedActivity.IN_VEHICLE)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT).build(),
-            ActivityTransition.Builder().setActivityType(DetectedActivity.WALKING)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER).build(),
-            ActivityTransition.Builder().setActivityType(DetectedActivity.WALKING)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT).build(),
-            ActivityTransition.Builder().setActivityType(DetectedActivity.RUNNING)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER).build(),
-            ActivityTransition.Builder().setActivityType(DetectedActivity.RUNNING)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT).build()
-        )
 
-        val request = ActivityTransitionRequest(transitions)
-        val intent = Intent(context, TransitionReceiver2::class.java)
-        val pendingIntent = PendingIntent.getBroadcast(
-            context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-        )
-
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED) {
-            val task = ActivityRecognition.getClient(context).requestActivityTransitionUpdates(request, pendingIntent)
-            task.addOnSuccessListener {
-                Log.d("ActivityTransition2", "Activity transitions successfully registered.")
-            }
-            task.addOnFailureListener {
-                Log.e("ActivityTransition2", "Failed to register activity transitions: ${it.message}")
-            }
-        }
-    }
-
-
-    private fun requestSleepUpdates(context: Context) {
-        Intent(context, SleepReceiver::class.java)
-        // Check if the ACTIVITY_RECOGNITION permission is granted
-        if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED) {
-            try {
-                val sleepPendingIntent = PendingIntent.getBroadcast(
-                    context,
-                    1,
-                    Intent(context, SleepReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-                 )
-
-                val sleepSegmentRequest = SleepSegmentRequest.getDefaultSleepSegmentRequest()
-                val task = ActivityRecognition.getClient(context).requestSleepSegmentUpdates(sleepPendingIntent,sleepSegmentRequest)
-
-                task.addOnSuccessListener {
-                    Log.d("SleepAPI", "Sleep updates successfully registered.")
-                }.addOnFailureListener {
-                    Log.e("SleepAPI", "Failed to register sleep updates: ${it.message}")
-                }
-            } catch (e: SecurityException) {
-                Log.e("SleepAPI", "SecurityException: ${e.message}")
-            }
-        } else {
-            // Permission not granted, request permission
-            ActivityCompat.requestPermissions(
-                (context as Activity),
-                arrayOf(android.Manifest.permission.ACTIVITY_RECOGNITION),
-                REQUEST_CODE_ACTIVITY_RECOGNITION
-            )
-        }
-    }
 
     override fun onDestroy() {
         super.onDestroy()
@@ -813,6 +690,8 @@ class NotificationReceiver : BroadcastReceiver() {
         }
     }
 }
+
+
 class RebootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         when (intent?.action) {
@@ -990,7 +869,6 @@ companion object{
         }
         val log = ActivityLog(
             activityType = activityType,
-            transitionType = if (event.transitionType == ACTIVITY_TRANSITION_ENTER) "Enter" else "Exit",
             timestamp = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
         )
         CoroutineScope(Dispatchers.IO).launch {
