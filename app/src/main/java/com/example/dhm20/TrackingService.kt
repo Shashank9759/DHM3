@@ -91,7 +91,6 @@ class TrackingService() : Service() {
         super.onCreate()
         startForegroundServiceWithNotification()
 
-        startActivityTransitionUpdates(this)
 
 
         //dev
