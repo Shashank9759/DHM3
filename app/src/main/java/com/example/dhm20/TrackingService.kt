@@ -86,12 +86,12 @@ class TrackingService() : Service() {
     val notificationId = 404
     val handler=Handler(Looper.getMainLooper())
     var count=0
+
     override fun onCreate() {
         super.onCreate()
         startForegroundServiceWithNotification()
 
-        startActivityTransitionUpdates(this)
-       // requestSleepUpdates(this)
+
 
         //dev
         initializeServices()
@@ -128,44 +128,51 @@ class TrackingService() : Service() {
 
     private fun startForegroundServiceWithNotification() {
         val channelId = "tracking_service_channel"
+        val notificationManager = getSystemService(NotificationManager::class.java)
 
-
+        // Create Notification Channel
         val channel = NotificationChannel(
             channelId,
             "Tracking Service",
             NotificationManager.IMPORTANCE_HIGH
         )
-        val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager.createNotificationChannel(channel)
-        Log.d("TrackingService", "Notification channel created")
 
-         notification = NotificationCompat.Builder(this, channelId)
+        // Intent to reopen the app when clicked
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Base Notification
+        val baseNotification = NotificationCompat.Builder(this, channelId)
             .setContentTitle("Monitoring Activity")
             .setContentText("Collecting activity transition data")
             .setSmallIcon(R.drawable.ic_notification)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+
+        // Start Foreground Service Notification
+        val notification = baseNotification
             .setOngoing(true)
             .build()
 
-        Log.d("TrackingService", "Attempting to start foreground")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // Android 14+
             startForeground(
-                notificationId, // Notification ID
+                notificationId,
                 notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-                or    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-                or    ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH
-
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION or
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH
             )
         } else {
-            startForeground(notificationId, notification) // For older versions
+            startForeground(notificationId, notification)
         }
 
-        Log.d("TrackingService", "Foreground started")
-      //  startForeground(notificationId, notification)
-     //   startActivityTransitionUpdates(this)
-        Toast.makeText(this, "Foreground service started", Toast.LENGTH_SHORT).show()
-
+        Log.d("TrackingService", "Foreground service started with notifications")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -201,17 +208,57 @@ class TrackingService() : Service() {
             syncAppUsageDataToRoomDB()
         }
 
+        Log.d("TrackingService", "onStartCommand called.")
 
         // Check if the service is restarted
         if (intent == null) {
             Log.d("TrackingService", "Service restarted by AlarmManager.")
-
+            showRestartNotification()
         }
 
         return START_STICKY
         //devend
     }
 
+
+    private fun showRestartNotification() {
+        val channelId = "service_restart_channel"
+        val notificationManager = getSystemService(NotificationManager::class.java)
+
+        // Create notification channel (Android 8.0+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "Service Restart",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifications for service restarts"
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        // Create a PendingIntent to open the app when the notification is clicked
+        val notificationIntent = Intent(this, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            notificationIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Build the notification
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.ic_notification) // Replace with your app's notification icon
+            .setContentTitle("Service Restarted")
+            .setContentText("The Tracking Service has been restarted.")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
+
+        // Show the notification
+        notificationManager.notify(2001, notification)
+    }
 
     //dev
     private inner class ScreenReceiver : BroadcastReceiver() {
@@ -231,6 +278,7 @@ class TrackingService() : Service() {
             }
         }
     }
+
     private fun aggregateAppUsageData() {
         Log.d("TrackingService", "aggregateAppUsageData: Aggregating app usage data")
         val startTime = System.currentTimeMillis() - AlarmManager.INTERVAL_DAY
@@ -289,12 +337,12 @@ class TrackingService() : Service() {
         val dao=db.appusagelogDao()
 
 
-            val log= AppUsageLog(
+        val log= AppUsageLog(
             usageMap=usageMap,
             screenOnTime = screenOnTime,
              date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         )
-            Log.d("TrackingService", "syncAppUsageDataToRoomdb: Log: $log")
+        Log.d("TrackingService", "syncAppUsageDataToRoomdb: Log: $log")
         CoroutineScope(Dispatchers.IO).launch {
             dao.insert(log)
         }
@@ -312,9 +360,9 @@ class TrackingService() : Service() {
         )
 
         val calendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 23)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
+            set(Calendar.HOUR_OF_DAY, 16)
+            set(Calendar.MINUTE, 14)
+            set(Calendar.SECOND, 50 )
             if (timeInMillis <= System.currentTimeMillis()) {
                 add(Calendar.DAY_OF_YEAR, 1)
             }
@@ -367,7 +415,7 @@ class TrackingService() : Service() {
         }
 
         // Schedule alarms
-        scheduleAlarm(alarmManager, 19, 0, 0, 1001) // First alarm at 7:00 PM
+        scheduleAlarm(alarmManager, 23, 39, 0, 1001) // First alarm at 7:00 PM
         scheduleAlarm(alarmManager, 8, 0, 0, 1002) // Second alarm at 8:00 AM
     }
 
@@ -503,86 +551,55 @@ class TrackingService() : Service() {
     //devend
 
     //useThis::
-//    private fun startActivityTransitionUpdates(context: Context) {
+    private fun startActivityTransitionUpdates(context: Context) {
+        val transitions = listOf(
+            DetectedActivity.IN_VEHICLE, DetectedActivity.WALKING, DetectedActivity.RUNNING
+        ).flatMap { activity ->
+            listOf(
+                ActivityTransition.Builder().setActivityType(activity).setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER).build(),
+                ActivityTransition.Builder().setActivityType(activity).setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT).build()
+            )
+        }
+        val pendingIntent = PendingIntent.getBroadcast(context, 0, Intent(context, TransitionReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
+        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED) {
+            ActivityRecognition.getClient(context).requestActivityTransitionUpdates(ActivityTransitionRequest(transitions), pendingIntent)
+        }
+    }
+
+//    fun startActivityTransitionUpdates(context: Context) {
 //        val transitions = listOf(
-//            DetectedActivity.IN_VEHICLE, DetectedActivity.WALKING, DetectedActivity.RUNNING
-//        ).flatMap { activity ->
-//            listOf(
-//                ActivityTransition.Builder().setActivityType(activity).setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER).build(),
-//                ActivityTransition.Builder().setActivityType(activity).setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT).build()
-//            )
-//        }
-//        val pendingIntent = PendingIntent.getBroadcast(context, 0, Intent(context, TransitionReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
+//            ActivityTransition.Builder().setActivityType(DetectedActivity.IN_VEHICLE)
+//                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER).build(),
+//            ActivityTransition.Builder().setActivityType(DetectedActivity.IN_VEHICLE)
+//                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT).build(),
+//            ActivityTransition.Builder().setActivityType(DetectedActivity.WALKING)
+//                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER).build(),
+//            ActivityTransition.Builder().setActivityType(DetectedActivity.WALKING)
+//                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT).build(),
+//            ActivityTransition.Builder().setActivityType(DetectedActivity.RUNNING)
+//                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER).build(),
+//            ActivityTransition.Builder().setActivityType(DetectedActivity.RUNNING)
+//                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT).build()
+//        )
+//
+//        val request = ActivityTransitionRequest(transitions)
+//        val intent = Intent(context, TransitionReceiver::class.java)
+//        val pendingIntent = PendingIntent.getBroadcast(
+//            context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+//        )
+//
 //        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED) {
-//            ActivityRecognition.getClient(context).requestActivityTransitionUpdates(ActivityTransitionRequest(transitions), pendingIntent)
+//            val task = ActivityRecognition.getClient(context).requestActivityTransitionUpdates(request, pendingIntent)
+//            task.addOnSuccessListener {
+//                Log.d("ActivityTransition2", "Activity transitions successfully registered.")
+//            }
+//            task.addOnFailureListener {
+//                Log.e("ActivityTransition2", "Failed to register activity transitions: ${it.message}")
+//            }
 //        }
 //    }
 
-    fun startActivityTransitionUpdates(context: Context) {
-        val transitions = listOf(
-            ActivityTransition.Builder().setActivityType(DetectedActivity.IN_VEHICLE)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER).build(),
-            ActivityTransition.Builder().setActivityType(DetectedActivity.IN_VEHICLE)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT).build(),
-            ActivityTransition.Builder().setActivityType(DetectedActivity.WALKING)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER).build(),
-            ActivityTransition.Builder().setActivityType(DetectedActivity.WALKING)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT).build(),
-            ActivityTransition.Builder().setActivityType(DetectedActivity.RUNNING)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER).build(),
-            ActivityTransition.Builder().setActivityType(DetectedActivity.RUNNING)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT).build()
-        )
 
-        val request = ActivityTransitionRequest(transitions)
-        val intent = Intent(context, TransitionReceiver2::class.java)
-        val pendingIntent = PendingIntent.getBroadcast(
-            context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-        )
-
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED) {
-            val task = ActivityRecognition.getClient(context).requestActivityTransitionUpdates(request, pendingIntent)
-            task.addOnSuccessListener {
-                Log.d("ActivityTransition2", "Activity transitions successfully registered.")
-            }
-            task.addOnFailureListener {
-                Log.e("ActivityTransition2", "Failed to register activity transitions: ${it.message}")
-            }
-        }
-    }
-
-
-    private fun requestSleepUpdates(context: Context) {
-        Intent(context, SleepReceiver::class.java)
-        // Check if the ACTIVITY_RECOGNITION permission is granted
-        if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED) {
-            try {
-                val sleepPendingIntent = PendingIntent.getBroadcast(
-                    context,
-                    1,
-                    Intent(context, SleepReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-                 )
-
-                val sleepSegmentRequest = SleepSegmentRequest.getDefaultSleepSegmentRequest()
-                val task = ActivityRecognition.getClient(context).requestSleepSegmentUpdates(sleepPendingIntent,sleepSegmentRequest)
-
-                task.addOnSuccessListener {
-                    Log.d("SleepAPI", "Sleep updates successfully registered.")
-                }.addOnFailureListener {
-                    Log.e("SleepAPI", "Failed to register sleep updates: ${it.message}")
-                }
-            } catch (e: SecurityException) {
-                Log.e("SleepAPI", "SecurityException: ${e.message}")
-            }
-        } else {
-            // Permission not granted, request permission
-            ActivityCompat.requestPermissions(
-                (context as Activity),
-                arrayOf(android.Manifest.permission.ACTIVITY_RECOGNITION),
-                REQUEST_CODE_ACTIVITY_RECOGNITION
-            )
-        }
-    }
 
     override fun onDestroy() {
         super.onDestroy()
@@ -591,6 +608,9 @@ class TrackingService() : Service() {
         isRecording = false
         handler.removeCallbacksAndMessages(null)
         unregisterScreenReceiver()
+
+        Log.d("TrackingService", "Service destroyed. Attempting to restart...")
+
 
         // Restart logic
         val restartIntent = Intent(this, TrackingService::class.java)
@@ -685,23 +705,73 @@ class NotificationReceiver : BroadcastReceiver() {
 
 
 class RebootReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context?, intent: Intent?) {
-        if (intent?.action == Intent.ACTION_BOOT_COMPLETED) {
-            context?.let {
-                // Start TrackingService to reschedule the notification
-                val trackingServiceIntent = Intent(it, TrackingService::class.java)
-                it.startService(trackingServiceIntent)
-
-                // Start any other foreground services needed, such as location updates or audio recording
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    it.startForegroundService(trackingServiceIntent)
-                } else {
-                    it.startService(trackingServiceIntent)
-                }
-
-                Log.d("RebootReceiver", "Foreground services started after reboot")
+    override fun onReceive(context: Context, intent: Intent?) {
+        when (intent?.action) {
+            Intent.ACTION_BOOT_COMPLETED,
+            "android.intent.action.QUICKBOOT_POWERON",
+            "com.htc.intent.action.QUICKBOOT_POWERON" -> {
+                showRebootNotification(context, isQuickBoot = intent.action != Intent.ACTION_BOOT_COMPLETED)
             }
         }
+    }
+
+    private fun showRebootNotification(context: Context, isQuickBoot: Boolean) {
+        val channelId = "reboot_notification_channel"
+        val notificationManager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        // Create notification channel (Android 8.0+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "Reboot Notification",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifications for reboot events"
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        // Create an Intent to open the app
+        val notificationIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            notificationIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Customize notification based on boot type
+        val title = if (isQuickBoot) "Quick Boot Completed" else "Device Restarted"
+        val message = if (isQuickBoot)
+            "Device quick boot completed. Tap to resume your activities."
+        else
+            "Please tap to reopen the app and resume activity tracking."
+
+        // Build the notification
+        val notification = NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .apply {
+                if (isQuickBoot) {
+                    // Add a distinct style for quick boot notifications
+                    setStyle(NotificationCompat.BigTextStyle()
+                        .bigText(message)
+                        .setSummaryText("Quick Boot"))
+                }
+            }
+            .build()
+
+        // Show the notification with different IDs for different boot types
+        val notificationId = if (isQuickBoot) 3002 else 3001
+        notificationManager.notify(notificationId, notification)
     }
 }
 

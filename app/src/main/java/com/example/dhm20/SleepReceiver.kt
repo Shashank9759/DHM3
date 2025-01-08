@@ -1,3 +1,4 @@
+
 package com.example.dhm20
 
 import android.content.BroadcastReceiver
@@ -45,8 +46,8 @@ class SleepReceiver : BroadcastReceiver() {
 
             if(!(toggleStates["Sleep"]?:false)){
                 if(!(toggleStates["Sleep"]?:false)){
-                 //   Toast.makeText(context,"Receiver ${"Sleep"} , ${toggleStates["Sleep"].toString()}",
-                  //      Toast.LENGTH_SHORT).show();
+                    //   Toast.makeText(context,"Receiver ${"Sleep"} , ${toggleStates["Sleep"].toString()}",
+                    //      Toast.LENGTH_SHORT).show();
                     return
                 }
                 return

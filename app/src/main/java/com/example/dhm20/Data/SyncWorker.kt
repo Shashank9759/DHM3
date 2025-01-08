@@ -22,6 +22,9 @@ import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class SyncWorker(val appContext: Context, workerParams: WorkerParameters) : CoroutineWorker(appContext, workerParams) {
     private val firebaseDatabase = FirebaseDatabase.getInstance().reference
@@ -38,165 +41,165 @@ class SyncWorker(val appContext: Context, workerParams: WorkerParameters) : Coro
         val AppUsageLogs = appusagedb.appusagelogDao().getAllLogs()
         val SurveyLogs = surveydb.surveyLogDao().getAllLogs()
 
-      if((logs==null || logs!!.isEmpty())
-          && (audioLogs==null || audioLogs!!.isEmpty())
-          && (locationLogs==null || locationLogs!!.isEmpty())
-          && (AppUsageLogs==null || AppUsageLogs!!.isEmpty())
-          && (SurveyLogs==null || SurveyLogs!!.isEmpty())
+        if((logs==null || logs!!.isEmpty())
+            && (audioLogs==null || audioLogs!!.isEmpty())
+            && (locationLogs==null || locationLogs!!.isEmpty())
+            && (AppUsageLogs==null || AppUsageLogs!!.isEmpty())
+            && (SurveyLogs==null || SurveyLogs!!.isEmpty())
 
-          ) {
-          return Result.failure()
+        ) {
+            return Result.failure()
 
         }
         else{
-          if (logs!=null && logs!!.isNotEmpty()) {
-              Log.d("log@@@@", "log is not null")
-              // Iterate over each log and upload to Firebase
-              for (log in logs) {
-                  val userId = getIdTokenFromPrefs(appContext) ?: "anonymous"
+            if (logs!=null && logs!!.isNotEmpty()) {
+                Log.d("log@@@@", "log is not null")
+                // Iterate over each log and upload to Firebase
+                for (log in logs) {
+                    val userId = getIdTokenFromPrefs(appContext) ?: "anonymous"
 
-                  try {
-                      // Upload log to Firebase
-                      firebaseDatabase.child("users")
-                          .child(userId)
-                          .child("activity_transitions")
-                          .push()
-                          .setValue(log)
-                          .addOnSuccessListener {
-                              Log.d("SyncWorker", "Successfully synced log: $log")
+                    try {
+                        // Upload log to Firebase
+                        firebaseDatabase.child("users")
+                            .child(userId)
+                            .child("activity_transitions")
+                            .push()
+                            .setValue(log)
+                            .addOnSuccessListener {
+                                Log.d("SyncWorker", "Successfully synced log: $log")
 
-                              // Run delete operation after successful sync in a coroutine context (background thread)
-                              // This ensures we are running database operations in the correct context
-                              CoroutineScope(Dispatchers.IO).launch {
-                                  db.activityLogDao().delete(log)
-                                  Log.d("SyncWorker", "Deleted log: $log from Room DB")
-                              }
-                          }
-                          .addOnFailureListener { e ->
-                              Log.e("SyncWorker", "Error syncing log: ${e.message}")
-                          }
-                  } catch (e: Exception) {
-                      Log.e("SyncWorker", "Error syncing log: ${e.message}")
-                     // return Result.failure()  // Failure on syncing any log
-                  }
-              }
+                                // Run delete operation after successful sync in a coroutine context (background thread)
+                                // This ensures we are running database operations in the correct context
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    db.activityLogDao().delete(log)
+                                    Log.d("SyncWorker", "Deleted log: $log from Room DB")
+                                }
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e("SyncWorker", "Error syncing log: ${e.message}")
+                            }
+                    } catch (e: Exception) {
+                        Log.e("SyncWorker", "Error syncing log: ${e.message}")
+                        // return Result.failure()  // Failure on syncing any log
+                    }
+                }
+
+            }
+            if (audioLogs!=null && audioLogs!!.isNotEmpty()) {
+                Log.d("audiolog@@@@", "log is not null")
+                // Iterate over each log and upload to Firebase
+                for (log in audioLogs) {
+                    val userId = getIdTokenFromPrefs(appContext) ?: "anonymous"
+
+                    try {
+                        // Upload log to Firebase
+                        firebaseDatabase.child("users")
+                            .child(userId)
+                            .child("audio_data")
+                            .push()
+                            .setValue(log)
+                            .addOnSuccessListener {
+                                Log.d("SyncWorker", "Successfully Audio synced log: $log")
+
+                                // Run delete operation after successful sync in a coroutine context (background thread)
+                                // This ensures we are running database operations in the correct context
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    audiodb.audiologDao().delete(log)
+                                    Log.d("SyncWorker", "Deleted Audio log: $log from Room DB")
+                                }
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e("SyncWorker", "Error Audio syncing log: ${e.message}")
+                            }
+                    } catch (e: Exception) {
+                        Log.e("SyncWorker", "Error Audio syncing log: ${e.message}")
+                        //  return Result.failure()  // Failure on syncing any log
+                    }
+                }
+
+            }
+
+            if (locationLogs!=null && locationLogs!!.isNotEmpty()) {
+                Log.d("locationlog@@@@", "log is not null")
+                // Iterate over each log and upload to Firebase
+                for (log in locationLogs) {
+                    val userId =getIdTokenFromPrefs(appContext) ?: "anonymous"
+
+                    try {
+                        // Upload log to Firebase
+                        firebaseDatabase.child("users")
+                            .child(userId)
+                            .child("gps_data")
+                            .push()
+                            .setValue(log)
+                            .addOnSuccessListener {
+                                Log.d("SyncWorker", "Successfully Location synced log: $log")
+
+                                // Run delete operation after successful sync in a coroutine context (background thread)
+                                // This ensures we are running database operations in the correct context
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    locationdb.locationlogDao().delete(log)
+                                }
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e("SyncWorker", "Error Audio syncing log: ${e.message}")
+                            }
+                    } catch (e: Exception) {
+                        Log.e("SyncWorker", "Error Audio syncing log: ${e.message}")
+                        //  return Result.failure()  // Failure on syncing any log
+                    }
+                }
+
+            }
+            if (AppUsageLogs!=null && AppUsageLogs!!.isNotEmpty()) {
+                Log.d("appusagelog@@@@", "log is not null")
+                // Iterate over each log and upload to Firebase
+                for (log in AppUsageLogs) {
+                    val userId = getIdTokenFromPrefs(appContext) ?: "anonymous"
+
+                    try {
+                        // Upload log to Firebase
+                        val userRef = firebaseDatabase.child("users")
+                            .child(userId)
+                            .child("phone_usage")
+                            .child(log.date)
+
+
+
+                        log.usageMap.forEach { (packageName, appData) ->
+                            val simplifiedAppName = simplifyAppName(packageName)
+                            Log.d(
+                                "TrackingService",
+                                "syncAppUsageDataToFirebase: App $simplifiedAppName - " +
+                                        "Opened: ${appData.get(0)} times, Duration: ${appData.get(1)} ms"
+                            )
+                            val appRef = userRef.child("apps").child(simplifiedAppName)
+                            appRef.child("opened").setValue(appData.get(0))
+                            appRef.child("aggregated_duration").setValue(appData.get(1))
+                        }
+
+                        userRef.child("screen_time").setValue(log.screenOnTime).addOnSuccessListener {
+                            Log.d("SyncWorker", "Successfully appusage synced log: $log")
+                            CoroutineScope(Dispatchers.IO).launch {
+                                appusagedb.appusagelogDao().delete(log)
+                            }
+                        }
+
+
+                    } catch (e: Exception) {
+                        Log.e("SyncWorker", "Error appusage syncing log: ${e.message}")
+                        //  return Result.failure()  // Failure on syncing any log
+                    }
+                }
 
           }
-          if (audioLogs!=null && audioLogs!!.isNotEmpty()) {
-              Log.d("audiolog@@@@", "log is not null")
-              // Iterate over each log and upload to Firebase
-              for (log in audioLogs) {
-                  val userId = getIdTokenFromPrefs(appContext) ?: "anonymous"
-
-                  try {
-                      // Upload log to Firebase
-                      firebaseDatabase.child("users")
-                          .child(userId)
-                          .child("audio_data")
-                          .push()
-                          .setValue(log)
-                          .addOnSuccessListener {
-                              Log.d("SyncWorker", "Successfully Audio synced log: $log")
-
-                              // Run delete operation after successful sync in a coroutine context (background thread)
-                              // This ensures we are running database operations in the correct context
-                              CoroutineScope(Dispatchers.IO).launch {
-                                  audiodb.audiologDao().delete(log)
-                                  Log.d("SyncWorker", "Deleted Audio log: $log from Room DB")
-                              }
-                          }
-                          .addOnFailureListener { e ->
-                              Log.e("SyncWorker", "Error Audio syncing log: ${e.message}")
-                          }
-                  } catch (e: Exception) {
-                      Log.e("SyncWorker", "Error Audio syncing log: ${e.message}")
-                    //  return Result.failure()  // Failure on syncing any log
-                  }
-              }
-
-          }
-
-          if (locationLogs!=null && locationLogs!!.isNotEmpty()) {
-              Log.d("locationlog@@@@", "log is not null")
-              // Iterate over each log and upload to Firebase
-              for (log in locationLogs) {
-                  val userId =getIdTokenFromPrefs(appContext) ?: "anonymous"
-
-                  try {
-                      // Upload log to Firebase
-                      firebaseDatabase.child("users")
-                          .child(userId)
-                          .child("gps_data")
-                          .push()
-                          .setValue(log)
-                          .addOnSuccessListener {
-                              Log.d("SyncWorker", "Successfully Location synced log: $log")
-
-                              // Run delete operation after successful sync in a coroutine context (background thread)
-                              // This ensures we are running database operations in the correct context
-                              CoroutineScope(Dispatchers.IO).launch {
-                                  locationdb.locationlogDao().delete(log)
-                                                                }
-                          }
-                          .addOnFailureListener { e ->
-                              Log.e("SyncWorker", "Error Audio syncing log: ${e.message}")
-                          }
-                  } catch (e: Exception) {
-                      Log.e("SyncWorker", "Error Audio syncing log: ${e.message}")
-                      //  return Result.failure()  // Failure on syncing any log
-                  }
-              }
-
-          }
-          if (AppUsageLogs!=null && AppUsageLogs!!.isNotEmpty()) {
-              Log.d("appusagelog@@@@", "log is not null")
-              // Iterate over each log and upload to Firebase
-              for (log in AppUsageLogs) {
-                  val userId = getIdTokenFromPrefs(appContext) ?: "anonymous"
-
-                  try {
-                      // Upload log to Firebase
-                      val userRef = firebaseDatabase.child("users")
-                          .child(userId)
-                          .child("phone_usage")
-                          .child(log.date)
 
 
-
-                      log.usageMap.forEach { (packageName, appData) ->
-                          val simplifiedAppName = simplifyAppName(packageName)
-                          Log.d(
-                              "TrackingService",
-                              "syncAppUsageDataToFirebase: App $simplifiedAppName - " +
-                                      "Opened: ${appData.get(0)} times, Duration: ${appData.get(1)} ms"
-                          )
-                          val appRef = userRef.child("apps").child(simplifiedAppName)
-                          appRef.child("opened").setValue(appData.get(0))
-                          appRef.child("aggregated_duration").setValue(appData.get(1))
-                      }
-
-                      userRef.child("screen_time").setValue(log.screenOnTime).addOnSuccessListener {
-                          Log.d("SyncWorker", "Successfully appusage synced log: $log")
-                          CoroutineScope(Dispatchers.IO).launch {
-                              appusagedb.appusagelogDao().delete(log)
-                          }
-                      }
-
-
-                  } catch (e: Exception) {
-                      Log.e("SyncWorker", "Error appusage syncing log: ${e.message}")
-                      //  return Result.failure()  // Failure on syncing any log
-                  }
-              }
-
-          }
-
-
-          if (SurveyLogs!=null && SurveyLogs!!.isNotEmpty()) {
-              Log.d("surveylog@@@@", "log is not null")
-              // Iterate over each log and upload to Firebase
-              for (log in SurveyLogs) {
-                  val userId = getIdTokenFromPrefs(appContext) ?: "anonymous"
+            if (SurveyLogs!=null && SurveyLogs!!.isNotEmpty()) {
+                Log.d("surveylog@@@@", "log is not null")
+                // Iterate over each log and upload to Firebase
+                for (log in SurveyLogs) {
+                    val userId = getIdTokenFromPrefs(appContext) ?: "anonymous"
 
                   try {
                      firebaseDatabase.child("users")
@@ -208,64 +211,32 @@ class SyncWorker(val appContext: Context, workerParams: WorkerParameters) : Coro
                               Log.d("SyncwokerSurvey","Succesfull")
                               CoroutineScope(Dispatchers.IO).launch {
                                   surveydb.surveyLogDao().delete(log)
-                                  notifytotheUser(appContext)
                               }
                           }
                           .addOnFailureListener {
 
-                              Log.d("SyncwokerSurvey","unSuccesfull  - ${it.message}")
+                                Log.d("SyncwokerSurvey","unSuccesfull  - ${it.message}")
 
 
-                          }
+                            }
 
 
 
 
 
-                  } catch (e: Exception) {
-                      Log.e("SyncWorker", "Error survey syncing log: ${e.message}")
-                      //  return Result.failure()  // Failure on syncing any log
-                  }
-              }
+                    } catch (e: Exception) {
+                        Log.e("SyncWorker", "Error survey syncing log: ${e.message}")
+                        //  return Result.failure()  // Failure on syncing any log
+                    }
+                }
 
-          }
-
-
-          return Result.success()
-
-      }
-
-    }
-
-    private fun notifytotheUser(context: Context) {
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channelId = "app_Usage_Channel"
-
-        // Create notification channel if it doesn't exist (for Android 8.0 and above)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "App Ussage Notification",
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "Reminder to take your daily test"
             }
-            notificationManager.createNotificationChannel(channel)
+
+
+            return Result.success()
+
         }
 
-
-        // Create the notification
-        val notification = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.app_logo) // Replace with your app's notification icon
-            .setContentTitle("Your App Usage Data is processed Succesfully")
-
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-
-            .build()
-
-        // Show the notification
-        notificationManager.notify(1005, notification)
     }
 
     private fun simplifyAppName(packageName: String): String {
