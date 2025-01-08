@@ -22,6 +22,9 @@ import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class SyncWorker(val appContext: Context, workerParams: WorkerParameters) : CoroutineWorker(appContext, workerParams) {
     private val firebaseDatabase = FirebaseDatabase.getInstance().reference
@@ -189,7 +192,7 @@ class SyncWorker(val appContext: Context, workerParams: WorkerParameters) : Coro
                     }
                 }
 
-            }
+          }
 
 
             if (SurveyLogs!=null && SurveyLogs!!.isNotEmpty()) {
@@ -198,20 +201,19 @@ class SyncWorker(val appContext: Context, workerParams: WorkerParameters) : Coro
                 for (log in SurveyLogs) {
                     val userId = getIdTokenFromPrefs(appContext) ?: "anonymous"
 
-                    try {
-                        firebaseDatabase.child("users")
-                            .child(userId)
-                            .child("Survey")
-                            .child(log.timestamp)
-                            .setValue(log)
-                            .addOnSuccessListener {
-                                Log.d("SyncwokerSurvey","Succesfull")
-                                CoroutineScope(Dispatchers.IO).launch {
-                                    surveydb.surveyLogDao().delete(log)
-                                    notifytotheUser(appContext)
-                                }
-                            }
-                            .addOnFailureListener {
+                  try {
+                     firebaseDatabase.child("users")
+                          .child(userId)
+                          .child("Survey")
+                         .child(log.timestamp)
+                          .setValue(log)
+                          .addOnSuccessListener {
+                              Log.d("SyncwokerSurvey","Succesfull")
+                              CoroutineScope(Dispatchers.IO).launch {
+                                  surveydb.surveyLogDao().delete(log)
+                              }
+                          }
+                          .addOnFailureListener {
 
                                 Log.d("SyncwokerSurvey","unSuccesfull  - ${it.message}")
 
@@ -237,37 +239,6 @@ class SyncWorker(val appContext: Context, workerParams: WorkerParameters) : Coro
 
     }
 
-    private fun notifytotheUser(context: Context) {
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channelId = "app_Usage_Channel"
-
-        // Create notification channel if it doesn't exist (for Android 8.0 and above)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "App Ussage Notification",
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "Reminder to take your daily test"
-            }
-            notificationManager.createNotificationChannel(channel)
-        }
-
-
-        // Create the notification
-        val notification = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.app_logo) // Replace with your app's notification icon
-            .setContentTitle("Your App Usage Data is processed Succesfully")
-
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-
-            .build()
-
-        // Show the notification
-        notificationManager.notify(1005, notification)
-    }
-
     private fun simplifyAppName(packageName: String): String {
         // Map known apps to their user-friendly names
         val knownApps = mapOf(
@@ -287,3 +258,4 @@ class SyncWorker(val appContext: Context, workerParams: WorkerParameters) : Coro
         return sharedPref.getString("uid_token", null)
     }
 }
+

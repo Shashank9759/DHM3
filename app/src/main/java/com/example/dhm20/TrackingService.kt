@@ -92,7 +92,7 @@ class TrackingService() : Service() {
         startForegroundServiceWithNotification()
 
         startActivityTransitionUpdates(this)
-        // requestSleepUpdates(this)
+
 
         //dev
         initializeServices()
@@ -176,14 +176,25 @@ class TrackingService() : Service() {
         Log.d("TrackingService", "Foreground service started with notifications")
     }
 
-
-
-
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     Log.d("onstartcommenad","working")
         val trans=ActivityTransitionEvent(DetectedActivity.RUNNING,ACTIVITY_TRANSITION_ENTER,0L)
         val sleepEvent = SleepSegmentEvent(1625000000000L, 1625030000000L, SleepSegmentEvent.STATUS_SUCCESSFUL, 0,0)
 
+
+    //    logTransitionEvent(trans,this)
+//        logTransitionEvent(trans,this)
+//        logSleepEvent(sleepEvent,this)
+
+//        val toastRunnable=object:Runnable{
+//            override fun run() {
+//                Toast.makeText(this@TrackingService,"${count}",Toast.LENGTH_SHORT).show()
+//                count++
+//                handler.postDelayed(this,1000)
+//            }
+//
+//        }
+//        handler.postDelayed(toastRunnable,1000)
 
 
         //dev
@@ -385,6 +396,7 @@ class TrackingService() : Service() {
         val dao = db.activityLogDao()
         val log = ActivityLog(
             activityType = activityType,
+
             timestamp = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
         )
         CoroutineScope(Dispatchers.IO).launch {
@@ -599,6 +611,7 @@ class TrackingService() : Service() {
         unregisterScreenReceiver()
 
         Log.d("TrackingService", "Service destroyed. Attempting to restart...")
+
 
         // Restart logic
         val restartIntent = Intent(this, TrackingService::class.java)
