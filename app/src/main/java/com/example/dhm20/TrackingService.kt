@@ -86,12 +86,13 @@ class TrackingService() : Service() {
     val notificationId = 404
     val handler=Handler(Looper.getMainLooper())
     var count=0
+
+
+    //onCreate
     override fun onCreate() {
         super.onCreate()
         startForegroundServiceWithNotification()
 
-        startActivityTransitionUpdates(this)
-       // requestSleepUpdates(this)
 
         //dev
         initializeServices()
@@ -105,6 +106,8 @@ class TrackingService() : Service() {
         //devend
 
     }
+
+
     //dev
     private fun initializeServices() {
         usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
@@ -174,20 +177,6 @@ class TrackingService() : Service() {
         val sleepEvent = SleepSegmentEvent(1625000000000L, 1625030000000L, SleepSegmentEvent.STATUS_SUCCESSFUL, 0,0)
 
 
-    //    logTransitionEvent(trans,this)
-//        logTransitionEvent(trans,this)
-//        logSleepEvent(sleepEvent,this)
-
-//        val toastRunnable=object:Runnable{
-//            override fun run() {
-//                Toast.makeText(this@TrackingService,"${count}",Toast.LENGTH_SHORT).show()
-//                count++
-//                handler.postDelayed(this,1000)
-//            }
-//
-//        }
-//        handler.postDelayed(toastRunnable,1000)
-
 
         //dev
         startActivityTransitionUpdates(this)
@@ -251,6 +240,9 @@ class TrackingService() : Service() {
             }
         }
     }
+
+
+
     private fun syncAppUsageDataToRoomDB() {
 //        Log.d("TrackingService", "syncAppUsageDataToFirebase: Starting data sync")
 //        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: run {
