@@ -7,6 +7,5 @@ import androidx.room.PrimaryKey
  public data class ActivityLog(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     @ColumnInfo(name = "activityType") val activityType: String,
-
     @ColumnInfo(name = "timestamp")val timestamp: String
 )

@@ -57,14 +57,9 @@
             android:name=".TrackingService"
             android:foregroundServiceType="health|location|microphone"
             android:exported="true"/>
-        <receiver android:name=".SyncReceiver" />
-        <receiver android:name=".NotificationReceiver" />
-        <receiver android:name=".RebootReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
+        <receiver android:name=".TrackingService$SyncReceiver"  android:exported="true"/>
+        <receiver android:name=".TrackingService$NotificationReceiver"  android:exported="true"/>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -79,10 +74,14 @@
             />
 
         <receiver
-            android:name=".TransitionReceiver2"
+            android:name=".TrackingService$TransitionReceiver1"
             android:exported="true"
            />
-
+        <receiver android:name=".TrackingService$NetworkChangeReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+            </intent-filter>
+        </receiver>
         <receiver android:name=".Data.InternetConnectivityReceiver"
             android:exported="true">
             <intent-filter>
