@@ -423,7 +423,7 @@ class TrackingService() : Service() {
 
         // Schedule alarms
         scheduleAlarm(alarmManager, 19, 0, 0, 1001) // First alarm at 7:00 PM
-        scheduleAlarm(alarmManager, 14, 12, 0, 1002) // Second alarm at 8:00 AM
+        scheduleAlarm(alarmManager, 8, 0, 0, 1002) // Second alarm at 8:00 AM
     }
 
     private fun scheduleAlarm(
