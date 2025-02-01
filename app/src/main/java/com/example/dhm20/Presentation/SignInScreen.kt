@@ -106,9 +106,9 @@ fun SignInScreen(navController: NavController) {
                     navController.navigate("home")
 
                 } catch (e: GetCredentialException) {
-                    Toast.makeText(context, e.message, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, e.message   , Toast.LENGTH_SHORT).show()
                 } catch (e: GoogleIdTokenParsingException) {
-                    Toast.makeText(context, e.message, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, e.message , Toast.LENGTH_SHORT).show()
                 }
             }
         }

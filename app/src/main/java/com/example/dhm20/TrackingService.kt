@@ -67,6 +67,7 @@ private var currentActivity = "Still"
 
 
 class TrackingService() : Service() {
+
     private val firebaseDatabase = FirebaseDatabase.getInstance().reference
     lateinit var notification:Notification
 
@@ -79,6 +80,8 @@ class TrackingService() : Service() {
     private var isRecording = false
     private var screenOnTime = 0L
     private var screenOnStartTime = 0L
+    private var screenOnEndTime = 0L
+
     private val screenReceiver = ScreenReceiver()
     private  val syncInterval= 5000L
     //devend
@@ -216,6 +219,7 @@ class TrackingService() : Service() {
             showRestartNotification()
         }
 
+
         return START_STICKY
         //devend
     }
@@ -270,6 +274,7 @@ class TrackingService() : Service() {
                 }
                 Intent.ACTION_SCREEN_OFF -> {
                     if (screenOnStartTime != 0L) {
+                        screenOnEndTime=  System.currentTimeMillis()
                         screenOnTime += System.currentTimeMillis() - screenOnStartTime
                         screenOnStartTime = 0L
                         Log.d("ScreenReceiver", "onReceive: Screen OFF. Accumulated screen time: $screenOnTime ms")
@@ -340,6 +345,8 @@ class TrackingService() : Service() {
         val log= AppUsageLog(
             usageMap=usageMap,
             screenOnTime = screenOnTime,
+            screenStartTime = screenOnStartTime,
+            screenEndTime = screenOnEndTime,
              date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         )
         Log.d("TrackingService", "syncAppUsageDataToRoomdb: Log: $log")
@@ -415,8 +422,8 @@ class TrackingService() : Service() {
         }
 
         // Schedule alarms
-        scheduleAlarm(alarmManager, 23, 39, 0, 1001) // First alarm at 7:00 PM
-        scheduleAlarm(alarmManager, 8, 0, 0, 1002) // Second alarm at 8:00 AM
+        scheduleAlarm(alarmManager, 19, 0, 0, 1001) // First alarm at 7:00 PM
+        scheduleAlarm(alarmManager, 14, 12, 0, 1002) // Second alarm at 8:00 AM
     }
 
     private fun scheduleAlarm(
@@ -635,6 +642,7 @@ class TrackingService() : Service() {
     companion object {
         private const val SAMPLE_RATE = 44100
         private const val CONVERSATION_THRESHOLD = 2000
+        var isSurveyReceived=false
     }
 
     override fun onBind(intent: Intent?): IBinder? {

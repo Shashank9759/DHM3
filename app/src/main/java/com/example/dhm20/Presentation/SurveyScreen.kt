@@ -37,6 +37,7 @@ import androidx.navigation.NavController
 import com.example.dhm20.Data.Database.AudioDB
 import com.example.dhm20.Data.Database.SurveyDb
 import com.example.dhm20.Data.Entities.SurveyLog
+import com.example.dhm20.TrackingService.Companion.isSurveyReceived
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -62,7 +63,8 @@ fun SurveyScreen(questions: List<String>, navController: NavController) {
     var currentQuestionIndex by remember { mutableStateOf(0) }
     val answers = remember { mutableStateMapOf<Int, String>() }
     val ratings = remember { mutableStateMapOf<Int, Int>() }  // Store ratings
-    val options = listOf("None of the above", "Rarely", "Some of them", "Often", "All of them")
+    val options = listOf("None of the time", "Rarely", "Some of the time", "Often", "All of the time")
+
 
     Scaffold(
         topBar = {
@@ -91,7 +93,7 @@ fun SurveyScreen(questions: List<String>, navController: NavController) {
                 )
 
                 // Options
-                options.forEach { option ->
+                options.forEachIndexed { index,option ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -100,36 +102,38 @@ fun SurveyScreen(questions: List<String>, navController: NavController) {
                     ) {
                         RadioButton(
                             selected = answers[currentQuestionIndex] == option,
-                            onClick = { answers[currentQuestionIndex] = option }
+                            onClick = { answers[currentQuestionIndex] = option
+                                ratings[currentQuestionIndex] = index+1}
                         )
+
                         Text(text = option, modifier = Modifier.padding(start = 8.dp))
                     }
                 }
 
-
-                // Rating Bar (Slider)
-                Text(
-                    text = "Rate this question",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-                )
-
-                Slider(
-                    value = ratings[currentQuestionIndex]?.toFloat() ?: 1f,
-                    onValueChange = { newValue ->
-                        // Convert the slider value to an integer and store it
-                        ratings[currentQuestionIndex] = newValue.toInt()
-                    },
-                    valueRange = 1f..10f,
-                    steps = 8,  // 9 possible values (1, 2, 3, ..., 10)
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Text(
-                    text = "Rating: ${ratings[currentQuestionIndex] ?: 1}",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
+//
+//                // Rating Bar (Slider)
+//                Text(
+//                    text = "Rate this question",
+//                    style = MaterialTheme.typography.bodyMedium,
+//                    modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+//                )
+//
+//                Slider(
+//                    value = ratings[currentQuestionIndex]?.toFloat() ?: 1f,
+//                    onValueChange = { newValue ->
+//                        // Convert the slider value to an integer and store it
+//                        ratings[currentQuestionIndex] = newValue.toInt()
+//                    },
+//                    valueRange = 1f..10f,
+//                    steps = 8,  // 9 possible values (1, 2, 3, ..., 10)
+//                    modifier = Modifier.fillMaxWidth()
+//                )
+//
+//                Text(
+//                    text = "Rating: ${ratings[currentQuestionIndex] ?: 1}",
+//                    style = MaterialTheme.typography.bodySmall,
+//                    modifier = Modifier.padding(top = 4.dp)
+//                )
             }
 
 
@@ -189,7 +193,7 @@ fun SurveyScreen(questions: List<String>, navController: NavController) {
                                     finalscore= score
                                 ))
                             }
-
+                            isSurveyReceived=true
 
 
                             navController.navigate("score/${score}")
