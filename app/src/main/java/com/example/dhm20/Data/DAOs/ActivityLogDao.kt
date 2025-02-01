@@ -11,11 +11,11 @@ import com.example.dhm20.Data.Entities.ActivityLog
 @Dao
 interface ActivityLogDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-     fun insert(log: ActivityLog)
+    fun insert(log: ActivityLog)
 
     @Query("SELECT * FROM activity_logs")
-     fun getAllLogs(): List<ActivityLog>
+    fun getAllLogs(): List<ActivityLog>
 
     @Delete
-     fun delete(log: ActivityLog)
+    fun delete(log: ActivityLog)
 }
