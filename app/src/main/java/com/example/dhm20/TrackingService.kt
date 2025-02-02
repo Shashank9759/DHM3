@@ -99,6 +99,7 @@ class TrackingService() : Service() {
     private val audioLocationSyncInterval = 1000L // 1 second
     private val activitySyncInterval = 5000L // 5 seconds
     private val syncInterval = 5000L
+
     //devend
 
     val notificationId = 404
@@ -118,7 +119,7 @@ class TrackingService() : Service() {
 
         initializeConnectivityListener()
 
-        //dev
+
         initializeServices()
         Log.d("TrackingService", "onCreate: Scheduling daily sync")
         scheduleDailyNotifications()
@@ -172,7 +173,20 @@ class TrackingService() : Service() {
         Log.d("TrackingService", "unregisterScreenReceiver: ScreenReceiver unregistered")
     }
 
-    //devend
+
+    // Add this to the TrackingService class
+    private fun isSurveyCompleted(context: Context): Boolean {
+        val sharedPref = context.getSharedPreferences("survey_prefs", Context.MODE_PRIVATE)
+        return sharedPref.getBoolean("survey_completed", false)
+    }
+
+    private fun setSurveyCompleted(context: Context, completed: Boolean) {
+        val sharedPref = context.getSharedPreferences("survey_prefs", Context.MODE_PRIVATE)
+        with(sharedPref.edit()) {
+            putBoolean("survey_completed", completed)
+            apply()
+        }
+    }
 
     private fun startForegroundServiceWithNotification() {
         val channelId = "tracking_service_channel"
@@ -228,10 +242,8 @@ class TrackingService() : Service() {
         )
 
 
-        //dev
         startActivityTransitionUpdates(this)
         startPeriodicSync()
-//        startPeriodicAudioSync()
         startAudioDetection()
         startLocationUpdates()
         startLocationSync()
@@ -311,6 +323,8 @@ class TrackingService() : Service() {
         val log = AppUsageLog(
             usageMap = aggregatedData,
             screenOnTime = screenOnTime,
+            screenStartTime = screenOnStartTime,
+            screenEndTime = System.currentTimeMillis(),
             date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         )
 
@@ -412,8 +426,8 @@ class TrackingService() : Service() {
         )
 
         val calendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY,16)
-            set(Calendar.MINUTE, 27)
+            set(Calendar.HOUR_OF_DAY,23)
+            set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
             if (timeInMillis <= System.currentTimeMillis()) {
                 add(Calendar.DAY_OF_YEAR, 1)
@@ -603,10 +617,9 @@ class TrackingService() : Service() {
         notificationManager.notify((System.currentTimeMillis() % 10000).toInt(), notification)
     }
 
-
     private fun scheduleDailyNotifications() {
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-
+        Log.d("TrackingService", "onCreate: Starting service2")
         // Check if the app can schedule exact alarms
         if (!alarmManager.canScheduleExactAlarms()) {
             // Direct user to settings to enable exact alarms
@@ -628,6 +641,7 @@ class TrackingService() : Service() {
         requestCode: Int
     ) {
         try {
+            Log.d("TrackingService", "onCreate: Starting service3")
             val intent = Intent(this, NotificationReceiver::class.java)
             val pendingIntent = PendingIntent.getBroadcast(
                 this,
@@ -841,7 +855,7 @@ class TrackingService() : Service() {
         }
 
         val pendingIntent = PendingIntent.getBroadcast(
-            context, 0, Intent(context, TransitionReceiver1::class.java),
+            context, 0, Intent(context, TransitionReceiver::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
 
@@ -886,7 +900,7 @@ class TrackingService() : Service() {
 
     companion object {
         private const val SAMPLE_RATE = 44100
-        private const val CONVERSATION_THRESHOLD = 2000
+        private const val CONVERSATION_THRESHOLD = 2500
     }
 
     override fun onBind(intent: Intent?): IBinder? {
@@ -965,35 +979,62 @@ class TrackingService() : Service() {
                     notificationManager.createNotificationChannel(channel)
                 }
 
-                // Create an Intent to open the activity with the composable
-                val notificationIntent = Intent(it, MainActivity::class.java)
-                notificationIntent.putExtra("Survey", "")
-                notificationIntent.flags =
-                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                // Check if the survey was completed
+                val sharedPref = it.getSharedPreferences("survey_prefs", Context.MODE_PRIVATE)
+                val surveyCompleted = sharedPref.getBoolean("survey_completed", false)
 
-                // Wrap the Intent in a PendingIntent
-                val pendingIntent = PendingIntent.getActivity(
-                    it,
-                    0,
-                    notificationIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
+                if (!surveyCompleted) {
+                    // Create an Intent to open the activity with the composable
+                    val notificationIntent = Intent(it, MainActivity::class.java)
+                    notificationIntent.putExtra("Survey", "")
+                    notificationIntent.flags =
+                        Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
 
-                // Create the notification
-                val notification = NotificationCompat.Builder(it, channelId)
-                    .setSmallIcon(R.drawable.ic_notification) // Replace with your app's notification icon
-                    .setContentTitle("Time for Your Daily Test")
-                    .setContentText("Please complete your daily health test.")
-                    .setPriority(NotificationCompat.PRIORITY_HIGH)
-                    .setAutoCancel(true)
-                    .setContentIntent(pendingIntent)
-                    .build()
+                    // Wrap the Intent in a PendingIntent
+                    val pendingIntent = PendingIntent.getActivity(
+                        it,
+                        0,
+                        notificationIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
 
-                // Show the notification
-                notificationManager.notify(1001, notification)
+                    // Create the notification
+                    val notification = NotificationCompat.Builder(it, channelId)
+                        .setSmallIcon(R.drawable.ic_notification) // Replace with your app's notification icon
+                        .setContentTitle("Time for Your Daily Test")
+                        .setContentText("Please complete your daily health test.")
+                        .setPriority(NotificationCompat.PRIORITY_HIGH)
+                        .setAutoCancel(true)
+                        .setContentIntent(pendingIntent)
+                        .build()
+
+                    // Show the notification
+                    notificationManager.notify(1001, notification)
+
+                    // Reschedule the notification if the survey is not completed
+                    val alarmManager = it.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                    val calendar = Calendar.getInstance().apply {
+                        add(Calendar.HOUR_OF_DAY, 1) // Reschedule after 1 hour
+                    }
+
+                    val rescheduleIntent = Intent(it, NotificationReceiver::class.java)
+                    val reschedulePendingIntent = PendingIntent.getBroadcast(
+                        it,
+                        1001,
+                        rescheduleIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        calendar.timeInMillis,
+                        reschedulePendingIntent
+                    )
+                }
             }
         }
     }
+
 
     class RebootReceiver : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -1022,7 +1063,7 @@ class TrackingService() : Service() {
         }
     }
 
-    class TransitionReceiver1 : BroadcastReceiver() {
+    class TransitionReceiver : BroadcastReceiver() {
 
         override fun onReceive(context: Context, intent: Intent) {
             if (ActivityTransitionResult.hasResult(intent)) {

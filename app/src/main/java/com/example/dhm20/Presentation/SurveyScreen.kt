@@ -37,7 +37,7 @@ import androidx.navigation.NavController
 import com.example.dhm20.Data.Database.AudioDB
 import com.example.dhm20.Data.Database.SurveyDb
 import com.example.dhm20.Data.Entities.SurveyLog
-import com.example.dhm20.TrackingService.Companion.isSurveyReceived
+import com.example.dhm20.TrackingService.Companion
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -45,7 +45,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-
+var isSurveyReceived by mutableStateOf(false)
 @Preview(showBackground = true)
 @Composable
 fun preview3(){
@@ -193,7 +193,7 @@ fun SurveyScreen(questions: List<String>, navController: NavController) {
                                     finalscore= score
                                 ))
                             }
-                            isSurveyReceived=true
+                            isSurveyReceived = true
 
 
                             navController.navigate("score/${score}")

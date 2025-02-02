@@ -57,9 +57,9 @@
             android:name=".TrackingService"
             android:foregroundServiceType="health|location|microphone"
             android:exported="true"/>
-        <receiver android:name=".SyncReceiver" />
-        <receiver android:name=".NotificationReceiver" />
-        <receiver android:name=".RebootReceiver"
+        <receiver android:name=".TrackingService$SyncReceiver" />
+        <receiver android:name=".TrackingService$NotificationReceiver" />
+        <receiver android:name=".TrackingService$RebootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
@@ -74,12 +74,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <receiver android:name=".SleepReceiver"
-            android:exported="true"
-            />
 
         <receiver
-            android:name=".TransitionReceiver2"
+            android:name=".TrackingService$TransitionReceiver"
             android:exported="true"
            />
 

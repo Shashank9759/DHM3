@@ -1,8 +1,8 @@
 package com.example.dhm20.Utils
 
- //const val CLIENT_ID="461259927203-cc39206qgtobopp21r3k0076644e06p5.apps.googleusercontent.com"
+ const val CLIENT_ID="461259927203-cc39206qgtobopp21r3k0076644e06p5.apps.googleusercontent.com"
  // const val CLIENT_ID="567697618821-2vdv97gh32mspfjst4b0er902fbvjo0m.apps.googleusercontent.com"
- const val CLIENT_ID="949741451459-fkgde1kuagh3usosrdhhg7kt8ppiualt.apps.googleusercontent.com"
+// const val CLIENT_ID="949741451459-fkgde1kuagh3usosrdhhg7kt8ppiualt.apps.googleusercontent.com"
 val feelingsList = listOf(
  "I've been feeling optimistic about the future",
  "I've been feeling useful",
