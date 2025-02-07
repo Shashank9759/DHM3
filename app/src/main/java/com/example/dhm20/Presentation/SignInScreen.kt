@@ -65,9 +65,8 @@ fun SignInScreen(navController: NavController) {
 
 
 
-        val onClick: () -> Unit = {
+        val onClick: () ->Unit  = {
             val credentialManager = CredentialManager.create(context)
-
             val rawNonce = UUID.randomUUID().toString()
             val bytes = rawNonce.toByteArray()
             val md = MessageDigest.getInstance("SHA-256")
@@ -91,27 +90,22 @@ fun SignInScreen(navController: NavController) {
                         context = context,
                     )
                     val credential = result.credential
-
-                    val googleIdTokenCredential = GoogleIdTokenCredential
-                        .createFrom(credential.data)
-
+                    val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
                     val googleIdToken = googleIdTokenCredential.idToken
 
-                    Log.i(TAG, googleIdToken)
-
                     // Sign in with Firebase using the ID token
-                    signInWithGoogle(context,googleIdToken)
-
+                    signInWithGoogle(context, googleIdToken)
 
                     Toast.makeText(context, "You are signed in!", Toast.LENGTH_SHORT).show()
 
-                    // Navigate to your DHM main screen
-                    navController.navigate("home")
-
+                    // Navigate to the home screen and clear the back stack
+                    navController.navigate("home") {
+                        popUpTo("sign_in") { inclusive = true } // Clear the back stack
+                    }
                 } catch (e: GetCredentialException) {
-                    Toast.makeText(context, e.message   , Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, e.message, Toast.LENGTH_SHORT).show()
                 } catch (e: GoogleIdTokenParsingException) {
-                    Toast.makeText(context, e.message , Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, e.message, Toast.LENGTH_SHORT).show()
                 }
             }
         }

@@ -13,8 +13,8 @@ interface LocationLogDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(log: LocationLog)
 
-    @Query("SELECT * FROM location_logs")
-    fun getAllLogs(): List<LocationLog>
+    @Query("SELECT * FROM location_logs LIMIT :limit OFFSET :offset")
+    fun getLogsPaginated(limit: Int, offset: Int): List<LocationLog>
 
     @Delete
     fun delete(log: LocationLog)

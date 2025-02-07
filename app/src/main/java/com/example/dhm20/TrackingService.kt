@@ -545,7 +545,7 @@ class TrackingService() : Service() {
                         activityDao.delete(log) // Remove the log after successful sync
                     } catch (e: Exception) {
                         Log.e(
-                            "syncLocalDataToFirebase",
+                            "TrackingService",
                             "Failed to sync activity log: ${e.message}"
                         )
                     }
@@ -569,40 +569,46 @@ class TrackingService() : Service() {
                                 )
                             ).await()
                         audioDao.delete(log) // Remove the log after successful sync
+                        Log.e("TrackingService", "sync audio log offline")
                     } catch (e: Exception) {
-                        Log.e("syncLocalDataToFirebase", "Failed to sync audio log: ${e.message}")
+                        Log.e("TrackingService", "Failed to sync audio log: ${e.message}")
                     }
                 }
             }
         }
     }
-        private fun syncLocalLocationDataToFirebase() {
-            CoroutineScope(Dispatchers.IO).launch {
-                val locationDao = LocationDB.getInstance(this@TrackingService).locationlogDao()
-                val locationLogs = locationDao.getAllLogs()
-                if (locationLogs.isNotEmpty()) {
-                    locationLogs.forEach { log ->
-                        try {
-                            firebaseDatabase.child("users")
-                                .child(FirebaseAuth.getInstance().currentUser?.uid ?: return@forEach)
-                                .child("gps_data")
-                                .push()
-                                .setValue(
-                                    mapOf(
-                                        "latitude" to log.latitude,
-                                        "longitude" to log.longitude,
-                                        "timestamp" to log.timestamp
-                                    )
-                                ).await()
-                            locationDao.delete(log) // Remove the log after successful sync
-                        } catch (e: Exception) {
-                            Log.e("syncLocalLocationDataToFirebase", "Failed to sync location log: ${e.message}")
-                        }
+    private fun syncLocalLocationDataToFirebase() {
+        CoroutineScope(Dispatchers.IO).launch {
+            val locationDao = LocationDB.getInstance(this@TrackingService).locationlogDao()
+            var offset = 0
+            val batchSize = 100 // Adjust batch size as needed
+            while (true) {
+                val logs = locationDao.getLogsPaginated(batchSize, offset)
+                if (logs.isEmpty()) break // Exit loop if no more logs
+
+                logs.forEach { log ->
+                    try {
+                        firebaseDatabase.child("users")
+                            .child(FirebaseAuth.getInstance().currentUser?.uid ?: return@forEach)
+                            .child("gps_data")
+                            .push()
+                            .setValue(
+                                mapOf(
+                                    "latitude" to log.latitude,
+                                    "longitude" to log.longitude,
+                                    "timestamp" to log.timestamp
+                                )
+                            ).await()
+                        locationDao.delete(log) // Remove the log after successful sync
+                    } catch (e: Exception) {
+                        Log.e("TrackingService", "Failed to sync location log: ${e.message}")
                     }
-                    Log.d("syncLocalLocationDataToFirebase", "Local location data synced successfully.")
                 }
+                offset += batchSize
             }
+            Log.d("TrackingService", "Local location data synced successfully.")
         }
+    }
 
 
         private fun saveDataToLocalDb(activityType: String) {

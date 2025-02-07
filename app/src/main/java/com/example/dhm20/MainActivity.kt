@@ -126,51 +126,32 @@ class MainActivity : ComponentActivity() {
         unregisterReceiver(internetConnectivityReceiver)
     }
     @Composable
-    fun AppNavigation( auth: FirebaseAuth) {
-        val navController= rememberNavController()
+    fun AppNavigation(auth: FirebaseAuth) {
+        val navController = rememberNavController()
         val isLoggedIn by viewmodel.authState.collectAsState()
-      //  Toast.makeText(this,isLoggedIn.toString(),Toast.LENGTH_LONG).show()
-        var startDestination:String;
-        if(intent.hasExtra("Survey")){
-            startDestination="survey"
-             viewmodel.updateAuthState(true)
 
-            }else{
-            if (isLoggedIn){
-                startDestination= "home"
-            } else{
-                startDestination=  "sign_in"
-            }
-
+        var startDestination: String
+        if (intent.hasExtra("Survey")) {
+            startDestination = "survey"
+            viewmodel.updateAuthState(true)
+        } else {
+            startDestination = if (isLoggedIn) "home" else "sign_in"
         }
-
-
 
         NavHost(navController = navController, startDestination = startDestination) {
             composable("sign_in") { SignInScreen(navController) }
-            composable("home") {
-                HomeScreen(navController, auth)
+            composable("home") { HomeScreen(navController, auth) }
+            composable("survey") { SurveyScreen(feelingsList, navController) }
 
-
+            // Add a route for logging out
+            composable("logout") {
+                FirebaseAuth.getInstance().signOut()
+                viewmodel.updateAuthState(false)
+                navController.navigate("sign_in") {
+                    popUpTo("home") { inclusive = true } // Clear the back stack
+                }
             }
-
-            composable("survey") {
-
-                SurveyScreen(feelingsList,navController)
-
-
-            }
-
-
-//            composable("score/{score}" ) { backStackEntry ->
-//                val score = backStackEntry.arguments?.getString("score")?.toIntOrNull() ?: 0
-//                ScoreScreen(score,navController)
-//
-//
-//            }
-
         }
     }
-
 
 }
