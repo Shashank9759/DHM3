@@ -197,9 +197,23 @@ class TrackingService() : Service() {
             "Tracking Service",
             NotificationManager.IMPORTANCE_HIGH
         )
+
         val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager.createNotificationChannel(channel)
         Log.d("TrackingService", "Notification channel created")
+
+        val notificationIntent = Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+
+        val pendingIntent = notificationIntent?.let {
+            PendingIntent.getActivity(
+                this,
+                0,
+                it,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
 
         notification = NotificationCompat.Builder(this, channelId)
             .setContentTitle("Monitoring Activity")
@@ -207,6 +221,7 @@ class TrackingService() : Service() {
             .setSmallIcon(R.drawable.ic_notification)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setOngoing(true)
+            .setContentIntent(pendingIntent)
             .build()
 
         Log.d("TrackingService", "Attempting to start foreground")
@@ -608,15 +623,33 @@ class TrackingService() : Service() {
         return activeNetwork != null
     }
 
-    private fun notifyUser(title: String, message: String) {
+    private fun notifyUser(title: String, message: String,isDailyTest: Boolean = false) {
         val channelId = "tracking_service_channel"
         val notificationManager = getSystemService(NotificationManager::class.java)
+
+        val notificationIntent = if (!isDailyTest) {
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+        } else {
+            null // Daily test notifications will have their own logic
+        }
+
+        val pendingIntent = notificationIntent?.let {
+            PendingIntent.getActivity(
+                this,
+                0,
+                it,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
         val notification = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
             .build()
 
         notificationManager.notify((System.currentTimeMillis() % 10000).toInt(), notification)
@@ -1009,7 +1042,7 @@ class TrackingService() : Service() {
                     val notification = NotificationCompat.Builder(it, channelId)
                         .setSmallIcon(R.drawable.ic_notification) // Replace with your app's notification icon
                         .setContentTitle("Time for Your Daily Test")
-                        .setContentText("Please complete your daily health test.")
+                        .setContentText("Please complete your daily test.")
                         .setPriority(NotificationCompat.PRIORITY_HIGH)
                         .setAutoCancel(true)
                         .setContentIntent(pendingIntent)
@@ -1120,8 +1153,8 @@ class TrackingService() : Service() {
             val currentTime = System.currentTimeMillis()
             if (currentTime - installationTime > 3 * 60 * 60 * 1000) { // 3 hours
                 notifyUser(
-                    "Start Collecting Data",
-                    "You haven't started collecting data yet. Please enable data collection by opening the app and/or connecting to a network."
+                    "Resume Data Collection",
+                    "Please enable data collection by opening the app and/or connecting to a network."
                 )
             }
         } else if (lastDataCollectionTime != 0L) {
@@ -1129,7 +1162,7 @@ class TrackingService() : Service() {
             if (currentTime - lastDataCollectionTime > 3 * 60 * 60 * 1000) { // 3 hours
                 notifyUser(
                     "Resume Data Collection",
-                    "It's been a while since you last collected data. Please resume data collection by opening the app and/or connecting to a network."
+                    "Please resume data collection by opening the app and/or connecting to a network."
                 )
             }
         }
