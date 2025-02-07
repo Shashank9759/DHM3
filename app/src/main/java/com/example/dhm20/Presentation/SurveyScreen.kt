@@ -196,7 +196,7 @@ fun SurveyScreen(questions: List<String>, navController: NavController) {
                             isSurveyReceived = true
 
 
-                            navController.navigate("score/${score}")
+                            navController.navigate("home")
                         }
 
                         Log.d("Survey", "Answers: $answers")

@@ -44,7 +44,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.dhm20.R
-import com.example.dhm20.TransitionReceiver
+//import com.example.dhm20.TransitionReceiver
 import com.google.accompanist.permissions.MultiplePermissionsState
 import com.google.accompanist.permissions.PermissionState
 import com.google.android.gms.location.ActivityRecognition

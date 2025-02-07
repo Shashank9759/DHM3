@@ -32,12 +32,11 @@ val toggleStates = mutableStateMapOf(
         "Running" to true,
         "Walking" to true,
         "Vehicle" to true,
-        "Sleep" to true,
         "Microphone" to true,
          "Location" to true,
         "App Sync" to true
     )
-val keyOrder = listOf("Running", "Walking", "Vehicle", "Sleep", "Microphone", "Location", "App Sync")
+val keyOrder = listOf("Running", "Walking", "Vehicle", "Microphone", "Location", "App Sync")
 
 @Preview()
 @Composable

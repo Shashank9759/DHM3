@@ -162,12 +162,12 @@ class MainActivity : ComponentActivity() {
             }
 
 
-            composable("score/{score}" ) { backStackEntry ->
-                val score = backStackEntry.arguments?.getString("score")?.toIntOrNull() ?: 0
-                ScoreScreen(score,navController)
-
-
-            }
+//            composable("score/{score}" ) { backStackEntry ->
+//                val score = backStackEntry.arguments?.getString("score")?.toIntOrNull() ?: 0
+//                ScoreScreen(score,navController)
+//
+//
+//            }
 
         }
     }

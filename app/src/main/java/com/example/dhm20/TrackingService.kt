@@ -253,6 +253,10 @@ class TrackingService() : Service() {
 //            syncAppUsageDataToRoomDB()
         }
 
+        handler.postDelayed({
+            checkDataCollectionStatus()
+            handler.postDelayed({ checkDataCollectionStatus() }, 3 * 60 * 60 * 1000) // Check every 3 hours
+        }, 3 * 60 * 60 * 1000)
 //        if (intent?.getBooleanExtra("run_sync", false) == true) {
 //            Log.d("TrackingService", "Running daily sync at 11 PM")
 //            CoroutineScope(Dispatchers.IO).launch {
@@ -497,6 +501,7 @@ class TrackingService() : Service() {
             )
             .addOnSuccessListener {
                 Log.d("TrackingService", "Activity data synced successfully")
+                saveLastDataCollectionTime(this@TrackingService) // Save last data collection time
             }
             .addOnFailureListener {
                 Log.e("TrackingService", "Failed to sync activity data: ${it.message}")
@@ -764,6 +769,7 @@ class TrackingService() : Service() {
             )
             .addOnSuccessListener {
                 Log.d("TrackingService", "Audio data synced successfully: $isConversationDetected")
+                saveLastDataCollectionTime(this@TrackingService) // Save last data collection time
             }
             .addOnFailureListener {
                 Log.e("TrackingService", "Failed to sync audio data: ${it.message}")
@@ -819,6 +825,7 @@ class TrackingService() : Service() {
             )
             .addOnSuccessListener {
                 Log.d("TrackingService", "Location data synced successfully")
+                saveLastDataCollectionTime(this@TrackingService) // Save last data collection time
             }
             .addOnFailureListener {
                 Log.e("TrackingService", "Failed to sync location data: ${it.message}")
@@ -1086,4 +1093,48 @@ class TrackingService() : Service() {
         }
     }
 
+
+    fun saveLastDataCollectionTime(context: Context) {
+        val sharedPref = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        with(sharedPref.edit()) {
+            putLong("last_data_collection_time", System.currentTimeMillis())
+            apply()
+        }
+    }
+
+    fun getLastDataCollectionTime(context: Context): Long {
+        val sharedPref = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        return sharedPref.getLong("last_data_collection_time", 0)
+    }
+
+    fun getInstallationTime(context: Context): Long {
+        val sharedPref = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        return sharedPref.getLong("installation_time", 0)
+    }
+
+    private fun checkDataCollectionStatus() {
+        val installationTime = getInstallationTime(this)
+        val lastDataCollectionTime = getLastDataCollectionTime(this)
+
+        if (installationTime != 0L && lastDataCollectionTime == 0L) {
+            val currentTime = System.currentTimeMillis()
+            if (currentTime - installationTime > 3 * 60 * 60 * 1000) { // 3 hours
+                notifyUser(
+                    "Start Collecting Data",
+                    "You haven't started collecting data yet. Please enable data collection by opening the app and/or connecting to a network."
+                )
+            }
+        } else if (lastDataCollectionTime != 0L) {
+            val currentTime = System.currentTimeMillis()
+            if (currentTime - lastDataCollectionTime > 3 * 60 * 60 * 1000) { // 3 hours
+                notifyUser(
+                    "Resume Data Collection",
+                    "It's been a while since you last collected data. Please resume data collection by opening the app and/or connecting to a network."
+                )
+            }
+        }
+    }
+
+
 }
+

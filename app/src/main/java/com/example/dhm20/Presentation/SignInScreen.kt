@@ -62,6 +62,9 @@ fun SignInScreen(navController: NavController) {
 
         val context = LocalContext.current
 
+
+
+
         val onClick: () -> Unit = {
             val credentialManager = CredentialManager.create(context)
 
@@ -142,6 +145,7 @@ suspend fun signInWithGoogle(context: Context,idToken: String) {
     val firebaseUid = FirebaseAuth.getInstance().currentUser?.uid
 
     storeIdToken(context,firebaseUid as String)
+    saveInstallationTime(context)
 }
 fun storeIdToken(context: Context, idToken: String) {
     val sharedPref = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
@@ -149,4 +153,18 @@ fun storeIdToken(context: Context, idToken: String) {
         putString("uid_token", idToken)
         apply()
     }
+}
+
+
+fun saveInstallationTime(context: Context) {
+    val sharedPref = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+    with(sharedPref.edit()) {
+        putLong("installation_time", System.currentTimeMillis())
+        apply()
+    }
+}
+
+fun getInstallationTime(context: Context): Long? {
+    val sharedPref = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+    return sharedPref.getLong("installation_time", 0)
 }
