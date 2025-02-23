@@ -674,6 +674,7 @@ class TrackingService() : Service() {
 
         // Schedule alarms
         scheduleAlarm(alarmManager, 19, 0, 0, 1001) // First alarm at 7:00 PM
+
         scheduleAlarm(alarmManager, 8, 0, 0, 1002) // Second alarm at 8:00 AM
     }
 
@@ -694,7 +695,7 @@ class TrackingService() : Service() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            val calendar = Calendar.getInstance().apply {
+            val calendar = Calendar.getInstance(TimeZone.getTimeZone("Europe/London")).apply {
                 set(Calendar.HOUR_OF_DAY, hour)
                 set(Calendar.MINUTE, minute)
                 set(Calendar.SECOND, second)

@@ -192,6 +192,7 @@ fun SurveyScreen(questions: List<String>, navController: NavController) {
                                     ),
                                     finalscore= score
                                 ))
+                                Log.d("finalscore",score.toString())
                             }
                             isSurveyReceived = true
 
