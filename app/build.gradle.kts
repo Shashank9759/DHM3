@@ -10,7 +10,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.dhm20"
+    namespace = "com.example.dhm30"
     compileSdk = 34
 
     sourceSets {
@@ -18,7 +18,7 @@ android {
 
     }
     defaultConfig {
-        applicationId = "com.example.dhm20"
+        applicationId = "com.example.dhm30"
         minSdk = 31
         targetSdk = 34
         versionCode = 1
