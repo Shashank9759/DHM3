@@ -253,9 +253,16 @@ class SyncWorker(val appContext: Context, workerParams: WorkerParameters) : Coro
         // Check if the package is in the map, otherwise use the default logic
         return knownApps[packageName] ?: packageName.substringAfterLast(".")
     }
-    fun getIdTokenFromPrefs(context: Context): String? {
-        val sharedPref = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
-        return sharedPref.getString("uid_token", null)
+
+    companion object{
+        fun getIdTokenFromPrefs(context: Context): String? {
+            val sharedPref = context.getSharedPreferences("My_App_Prefs", Context.MODE_PRIVATE)
+            val email = sharedPref.getString("user_email", null)
+            val encodedEmail = email?.replace(".", "_")?.replace("@", "_")
+
+            return encodedEmail
+        }
     }
 }
+
 

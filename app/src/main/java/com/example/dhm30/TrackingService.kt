@@ -66,6 +66,7 @@ import java.util.*
 import com.example.dhm30.Data.Entities.LocationLog
 import kotlinx.coroutines.tasks.await
 import com.example.dhm30.Data.Database.AppUsageDB
+import com.example.dhm30.Data.SyncWorker.Companion.getIdTokenFromPrefs
 import com.example.dhm30.Helpers.isNetworkAvailable
 
 data class AppUsageData(var openCount: Int = 0, var totalDuration: Long = 0)
@@ -371,7 +372,7 @@ class TrackingService() : Service() {
         CoroutineScope(Dispatchers.IO).launch {
             val logs = log
             logs.forEach { log ->
-                val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return@forEach
+                val userId = getIdTokenFromPrefs(this@TrackingService) ?: return@forEach
                 val userRef = firebaseDatabase.child("users")
                     .child(userId)
                     .child("phone_usage")
@@ -392,8 +393,11 @@ class TrackingService() : Service() {
     }
 
     fun getIdTokenFromPrefs(context: Context): String? {
-        val sharedPref = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
-        return sharedPref.getString("uid_token", null)
+        val sharedPref = context.getSharedPreferences("My_App_Prefs", Context.MODE_PRIVATE)
+        val email = sharedPref.getString("user_email", null)
+        val encodedEmail = email?.replace(".", "_")?.replace("@", "_")
+
+        return encodedEmail
     }
 
     private fun simplifyAppName(packageName: String): String {
@@ -503,7 +507,7 @@ class TrackingService() : Service() {
     }
 
     private fun syncActivityData(activityType: String) {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val userId =  getIdTokenFromPrefs(this@TrackingService) ?: return
         firebaseDatabase.child("users").child(userId).child("activity_transitions").push()
             .setValue(
                 mapOf(
@@ -676,6 +680,12 @@ class TrackingService() : Service() {
 
 
         scheduleAlarm(alarmManager, 21, 0, 0, 1002) // Second alarm at 9:00 PM
+      //  scheduleAlarm(alarmManager, 14, 47, 0, 1003) // Second alarm at 9:00 PM
+//        scheduleAlarm(alarmManager, 12, 57, 0, 1004) // Second alarm at 9:00 PM
+//        scheduleAlarm(alarmManager, 12, 55, 0, 1005) // Second alarm at 9:00 PM
+//        scheduleAlarm(alarmManager, 12, 53, 0, 1005) // Second alarm at 9:00 PM
+
+
 
     }
 
@@ -698,7 +708,7 @@ class TrackingService() : Service() {
 
 
 
-            val calendar = Calendar.getInstance(TimeZone.getTimeZone("Europe/London")).apply {
+            val calendar = Calendar.getInstance().apply {
                 set(Calendar.HOUR_OF_DAY, hour)
                 set(Calendar.MINUTE, minute)
                 set(Calendar.SECOND, second)
@@ -802,7 +812,7 @@ class TrackingService() : Service() {
 
 
     private fun syncAudioData(isConversationDetected: Int) {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val userId =  getIdTokenFromPrefs(this@TrackingService) ?: return
         firebaseDatabase.child("users").child(userId).child("audio_data").push()
             .setValue(
                 mapOf(
@@ -857,7 +867,7 @@ class TrackingService() : Service() {
         }
     }
     private fun syncLocationData(latitude: Double, longitude: Double) {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val userId =  getIdTokenFromPrefs(this@TrackingService) ?: return
         firebaseDatabase.child("users").child(userId).child("gps_data").push()
             .setValue(
                 mapOf(
@@ -986,7 +996,7 @@ class TrackingService() : Service() {
             CoroutineScope(Dispatchers.IO).launch {
                 val logs = dao.getAllLogs()
                 logs.forEach { log ->
-                    val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return@forEach
+                    val userId =  getIdTokenFromPrefs(context) ?: return@forEach
                     val userRef = FirebaseDatabase.getInstance().reference
                         .child("users")
                         .child(userId)

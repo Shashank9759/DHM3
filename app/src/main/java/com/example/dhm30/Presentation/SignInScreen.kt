@@ -137,9 +137,28 @@ suspend fun signInWithGoogle(context: Context,idToken: String) {
     val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
     Firebase.auth.signInWithCredential(firebaseCredential).await()
     val firebaseUid = FirebaseAuth.getInstance().currentUser?.uid
+    val authResult = Firebase.auth.signInWithCredential(firebaseCredential).await()
 
+    // Get the current user
+    val firebaseUser = authResult.user
+
+    // Access the email ID
+    val email = firebaseUser?.email
+    Log.d("emailgfb",email.toString())
+
+    // You can now use the email ID as needed
+    if (email != null) {
+        // For example, store the email in SharedPreferences or use it in your app
+        storeEmail(context, email)
+    }
     storeIdToken(context,firebaseUid as String)
     saveInstallationTime(context)
+}
+fun storeEmail(context: Context, email: String) {
+    val sharedPreferences = context.getSharedPreferences("My_App_Prefs", Context.MODE_PRIVATE)
+    val editor = sharedPreferences.edit()
+    editor.putString("user_email", email)
+    editor.apply()
 }
 fun storeIdToken(context: Context, idToken: String) {
     val sharedPref = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
