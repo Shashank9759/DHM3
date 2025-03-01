@@ -1,4 +1,4 @@
-package com.example.dhm20
+package com.example.dhm30
 
 
 import android.Manifest
@@ -22,10 +22,10 @@ import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import com.example.dhm20.Data.Entities.ActivityLog
-import com.example.dhm20.Data.Database.AppDatabase
-import com.example.dhm20.Presentation.toggleStates
-//import com.example.dhm20.TransitionReceiver
+import com.example.dhm30.Data.Entities.ActivityLog
+import com.example.dhm30.Data.Database.AppDatabase
+import com.example.dhm30.Presentation.toggleStates
+//import com.example.dhm30.TransitionReceiver
 import com.google.android.gms.location.ActivityRecognition
 import com.google.android.gms.location.ActivityTransition
 import com.google.android.gms.location.ActivityTransition.ACTIVITY_TRANSITION_ENTER
@@ -52,10 +52,10 @@ import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.net.ConnectivityManager
 import android.net.Network
-import com.example.dhm20.Data.Entities.AppUsageLog
-import com.example.dhm20.Data.Database.AudioDB
-import com.example.dhm20.Data.Entities.AudioLog
-import com.example.dhm20.Data.Database.LocationDB
+import com.example.dhm30.Data.Entities.AppUsageLog
+import com.example.dhm30.Data.Database.AudioDB
+import com.example.dhm30.Data.Entities.AudioLog
+import com.example.dhm30.Data.Database.LocationDB
 import com.google.android.gms.location.*
 import com.google.android.gms.location.FusedLocationProviderClient
 import android.provider.Settings
@@ -63,10 +63,10 @@ import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
 
 import java.util.*
-import com.example.dhm20.Data.Entities.LocationLog
+import com.example.dhm30.Data.Entities.LocationLog
 import kotlinx.coroutines.tasks.await
-import com.example.dhm20.Data.Database.AppUsageDB
-import com.example.dhm20.Helpers.isNetworkAvailable
+import com.example.dhm30.Data.Database.AppUsageDB
+import com.example.dhm30.Helpers.isNetworkAvailable
 
 data class AppUsageData(var openCount: Int = 0, var totalDuration: Long = 0)
 
@@ -173,6 +173,20 @@ class TrackingService() : Service() {
         Log.d("TrackingService", "unregisterScreenReceiver: ScreenReceiver unregistered")
     }
 
+
+    // Add this to the TrackingService class
+    private fun isSurveyCompleted(context: Context): Boolean {
+        val sharedPref = context.getSharedPreferences("survey_prefs", Context.MODE_PRIVATE)
+        return sharedPref.getBoolean("survey_completed", false)
+    }
+
+    private fun setSurveyCompleted(context: Context, completed: Boolean) {
+        val sharedPref = context.getSharedPreferences("survey_prefs", Context.MODE_PRIVATE)
+        with(sharedPref.edit()) {
+            putBoolean("survey_completed", completed)
+            apply()
+        }
+    }
 
 
 
@@ -655,9 +669,10 @@ class TrackingService() : Service() {
         }
 
         // Schedule alarms
-        scheduleAlarm(alarmManager, 15,  45,0, 1001) // First alarm at 7:00 PM
 
-//        scheduleAlarm(alarmManager, 8, 0, 0, 1002) // Second alarm at 8:00 AM
+
+        scheduleAlarm(alarmManager, 21, 0, 0, 1002) // Second alarm at 9:00 PM
+
     }
 
     private fun scheduleAlarm(
@@ -676,6 +691,8 @@ class TrackingService() : Service() {
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
+
+
 
             val calendar = Calendar.getInstance(TimeZone.getTimeZone("Europe/London")).apply {
                 set(Calendar.HOUR_OF_DAY, hour)
@@ -989,7 +1006,7 @@ class TrackingService() : Service() {
             }
         }}
 
-    class NotificationReceiver : BroadcastReceiver() {
+       class NotificationReceiver : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             context?.let {
                 val notificationManager =
@@ -1063,6 +1080,7 @@ class TrackingService() : Service() {
             }
         }
     }
+
 
 
     class RebootReceiver : BroadcastReceiver() {
