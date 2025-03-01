@@ -210,8 +210,7 @@ fun SurveyScreen(questions: List<String>, navController: NavController) {
                             }
                             isSurveyReceived = true
 
-                            val sharedPref = context.getSharedPreferences("survey_prefs", Context.MODE_PRIVATE)
-                            val surveyCompleted = sharedPref.getBoolean("survey_completed", false)
+
                             navController.navigate("home")
                         }
 
