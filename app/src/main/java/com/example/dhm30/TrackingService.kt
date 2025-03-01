@@ -1,4 +1,4 @@
-package com.example.dhm30
+package com.example.dhm20
 
 
 import android.Manifest
@@ -22,10 +22,10 @@ import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import com.example.dhm30.Data.Entities.ActivityLog
-import com.example.dhm30.Data.Database.AppDatabase
-import com.example.dhm30.Presentation.toggleStates
-//import com.example.dhm30.TransitionReceiver
+import com.example.dhm20.Data.Entities.ActivityLog
+import com.example.dhm20.Data.Database.AppDatabase
+import com.example.dhm20.Presentation.toggleStates
+//import com.example.dhm20.TransitionReceiver
 import com.google.android.gms.location.ActivityRecognition
 import com.google.android.gms.location.ActivityTransition
 import com.google.android.gms.location.ActivityTransition.ACTIVITY_TRANSITION_ENTER
@@ -52,10 +52,10 @@ import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.net.ConnectivityManager
 import android.net.Network
-import com.example.dhm30.Data.Entities.AppUsageLog
-import com.example.dhm30.Data.Database.AudioDB
-import com.example.dhm30.Data.Entities.AudioLog
-import com.example.dhm30.Data.Database.LocationDB
+import com.example.dhm20.Data.Entities.AppUsageLog
+import com.example.dhm20.Data.Database.AudioDB
+import com.example.dhm20.Data.Entities.AudioLog
+import com.example.dhm20.Data.Database.LocationDB
 import com.google.android.gms.location.*
 import com.google.android.gms.location.FusedLocationProviderClient
 import android.provider.Settings
@@ -63,10 +63,10 @@ import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
 
 import java.util.*
-import com.example.dhm30.Data.Entities.LocationLog
+import com.example.dhm20.Data.Entities.LocationLog
 import kotlinx.coroutines.tasks.await
-import com.example.dhm30.Data.Database.AppUsageDB
-import com.example.dhm30.Helpers.isNetworkAvailable
+import com.example.dhm20.Data.Database.AppUsageDB
+import com.example.dhm20.Helpers.isNetworkAvailable
 
 data class AppUsageData(var openCount: Int = 0, var totalDuration: Long = 0)
 
@@ -174,46 +174,33 @@ class TrackingService() : Service() {
     }
 
 
-    // Add this to the TrackingService class
-    private fun isSurveyCompleted(context: Context): Boolean {
-        val sharedPref = context.getSharedPreferences("survey_prefs", Context.MODE_PRIVATE)
-        return sharedPref.getBoolean("survey_completed", false)
-    }
 
-    private fun setSurveyCompleted(context: Context, completed: Boolean) {
-        val sharedPref = context.getSharedPreferences("survey_prefs", Context.MODE_PRIVATE)
-        with(sharedPref.edit()) {
-            putBoolean("survey_completed", completed)
-            apply()
-        }
-    }
 
     private fun startForegroundServiceWithNotification() {
         val channelId = "tracking_service_channel"
-
 
         val channel = NotificationChannel(
             channelId,
             "Tracking Service",
             NotificationManager.IMPORTANCE_HIGH
         )
-
         val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager.createNotificationChannel(channel)
+
         Log.d("TrackingService", "Notification channel created")
 
-        val notificationIntent = Intent(this, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            }
-
-        val pendingIntent = notificationIntent?.let {
-            PendingIntent.getActivity(
-                this,
-                0,
-                it,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
+        // Create a new intent to open the main app screen (not survey)
+        val appIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
+
+        // Ensure a unique request code so it doesn’t get overridden
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            1000, // Unique request code for foreground notification
+            appIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         notification = NotificationCompat.Builder(this, channelId)
             .setContentTitle("Monitoring Activity")
@@ -221,28 +208,23 @@ class TrackingService() : Service() {
             .setSmallIcon(R.drawable.ic_notification)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setOngoing(true)
-            .setContentIntent(pendingIntent)
+            .setContentIntent(pendingIntent) // Ensuring it always opens the app
             .build()
 
         Log.d("TrackingService", "Attempting to start foreground")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // Android 14+
             startForeground(
-                notificationId, // Notification ID
+                notificationId,
                 notification,
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-                        or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
                         or ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH
-
             )
         } else {
-            startForeground(notificationId, notification) // For older versions
+            startForeground(notificationId, notification)
         }
 
         Log.d("TrackingService", "Foreground started")
-        //  startForeground(notificationId, notification)
-        //   startActivityTransitionUpdates(this)
         Toast.makeText(this, "Foreground service started", Toast.LENGTH_SHORT).show()
-
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -673,10 +655,9 @@ class TrackingService() : Service() {
         }
 
         // Schedule alarms
+        scheduleAlarm(alarmManager, 15,  45,0, 1001) // First alarm at 7:00 PM
 
-
-        scheduleAlarm(alarmManager, 21, 0, 0, 1002) // Second alarm at 9:00 PM
-
+//        scheduleAlarm(alarmManager, 8, 0, 0, 1002) // Second alarm at 8:00 AM
     }
 
     private fun scheduleAlarm(
@@ -695,8 +676,6 @@ class TrackingService() : Service() {
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-
-
 
             val calendar = Calendar.getInstance(TimeZone.getTimeZone("Europe/London")).apply {
                 set(Calendar.HOUR_OF_DAY, hour)
@@ -1043,7 +1022,7 @@ class TrackingService() : Service() {
                     // Wrap the Intent in a PendingIntent
                     val pendingIntent = PendingIntent.getActivity(
                         it,
-                        0,
+                        2000,
                         notificationIntent,
                         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                     )
