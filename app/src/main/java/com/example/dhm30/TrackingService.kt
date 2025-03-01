@@ -189,32 +189,33 @@ class TrackingService() : Service() {
         }
     }
 
+
+
     private fun startForegroundServiceWithNotification() {
         val channelId = "tracking_service_channel"
-
 
         val channel = NotificationChannel(
             channelId,
             "Tracking Service",
             NotificationManager.IMPORTANCE_HIGH
         )
-
         val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager.createNotificationChannel(channel)
+
         Log.d("TrackingService", "Notification channel created")
 
-        val notificationIntent = Intent(this, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            }
-
-        val pendingIntent = notificationIntent?.let {
-            PendingIntent.getActivity(
-                this,
-                0,
-                it,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
+        // Create a new intent to open the main app screen (not survey)
+        val appIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
+
+        // Ensure a unique request code so it doesn’t get overridden
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            1000, // Unique request code for foreground notification
+            appIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         notification = NotificationCompat.Builder(this, channelId)
             .setContentTitle("Monitoring Activity")
@@ -222,28 +223,23 @@ class TrackingService() : Service() {
             .setSmallIcon(R.drawable.ic_notification)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setOngoing(true)
-            .setContentIntent(pendingIntent)
+            .setContentIntent(pendingIntent) // Ensuring it always opens the app
             .build()
 
         Log.d("TrackingService", "Attempting to start foreground")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // Android 14+
             startForeground(
-                notificationId, // Notification ID
+                notificationId,
                 notification,
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-                        or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
                         or ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH
-
             )
         } else {
-            startForeground(notificationId, notification) // For older versions
+            startForeground(notificationId, notification)
         }
 
         Log.d("TrackingService", "Foreground started")
-        //  startForeground(notificationId, notification)
-        //   startActivityTransitionUpdates(this)
         Toast.makeText(this, "Foreground service started", Toast.LENGTH_SHORT).show()
-
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -1020,7 +1016,7 @@ class TrackingService() : Service() {
             }
         }}
 
-    class NotificationReceiver : BroadcastReceiver() {
+       class NotificationReceiver : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             context?.let {
                 val notificationManager =
@@ -1053,7 +1049,7 @@ class TrackingService() : Service() {
                     // Wrap the Intent in a PendingIntent
                     val pendingIntent = PendingIntent.getActivity(
                         it,
-                        0,
+                        2000,
                         notificationIntent,
                         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                     )
@@ -1094,6 +1090,7 @@ class TrackingService() : Service() {
             }
         }
     }
+
 
 
     class RebootReceiver : BroadcastReceiver() {

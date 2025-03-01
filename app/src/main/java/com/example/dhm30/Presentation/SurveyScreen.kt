@@ -208,6 +208,15 @@ fun SurveyScreen(questions: List<String>, navController: NavController) {
                                 ))
                                 Log.d("finalscore",score.toString())
                             }
+
+                            
+                            // Mark the survey as completed in shared preferences
+
+                            val sharedPreferences = context.getSharedPreferences("survey_prefs", Context.MODE_PRIVATE)
+                            with(sharedPreferences.edit()) {
+                                putBoolean("survey_completed", true)
+                                apply()
+                            }
                             isSurveyReceived = true
 
 
