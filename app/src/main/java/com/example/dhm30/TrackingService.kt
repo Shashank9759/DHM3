@@ -440,7 +440,7 @@ class TrackingService() : Service() {
             this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val calendar = Calendar.getInstance().apply {
+        val calendar = Calendar.getInstance(TimeZone.getTimeZone("Europe/London")).apply {
             set(Calendar.HOUR_OF_DAY,23)
             set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
