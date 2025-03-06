@@ -59,6 +59,7 @@
             android:exported="true"/>
         <receiver android:name=".TrackingService$SyncReceiver" />
         <receiver android:name=".TrackingService$NotificationReceiver" />
+ <receiver android:name=".TrackingService$MidnightResetReceiver" />
         <receiver android:name=".TrackingService$RebootReceiver"
             android:exported="true">
             <intent-filter>

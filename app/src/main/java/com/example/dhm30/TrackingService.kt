@@ -446,7 +446,7 @@ class TrackingService() : Service() {
             this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val calendar = Calendar.getInstance().apply {
+        val calendar = Calendar.getInstance(TimeZone.getTimeZone("Europe/London")).apply {
             set(Calendar.HOUR_OF_DAY,23)
             set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
@@ -1092,11 +1092,44 @@ class TrackingService() : Service() {
                         reschedulePendingIntent
                     )
                 }
+                 scheduleMidnightReset(it)
+            }
+        }
+        fun scheduleMidnightReset(context: Context) {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            val resetIntent = Intent(context, MidnightResetReceiver::class.java)
+            val pendingIntent = PendingIntent.getBroadcast(
+                context, 1002, resetIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val calendar = Calendar.getInstance(TimeZone.getTimeZone("Europe/London")).apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                if (timeInMillis <= System.currentTimeMillis()) {
+                    add(Calendar.DAY_OF_YEAR, 1)
+                }
+            }
+
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent
+            )
+        }
+
+    }
+
+  class MidnightResetReceiver : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            context?.let {
+                val sharedPreferences = it.getSharedPreferences("survey_prefs", Context.MODE_PRIVATE)
+                with(sharedPreferences.edit()) {
+                    putBoolean("survey_completed", false)
+                    apply()
+                }
+                Log.d("MidnightResetReceiver", "Survey completion flag reset at midnight.")
             }
         }
     }
-
-
 
     class RebootReceiver : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
