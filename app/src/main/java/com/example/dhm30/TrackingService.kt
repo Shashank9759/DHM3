@@ -66,6 +66,8 @@ import java.util.*
 import com.example.dhm30.Data.Entities.LocationLog
 import kotlinx.coroutines.tasks.await
 import com.example.dhm30.Data.Database.AppUsageDB
+import com.example.dhm30.Data.SyncWorker
+import com.example.dhm30.Data.SyncWorker.Companion
 import com.example.dhm30.Data.SyncWorker.Companion.getIdTokenFromPrefs
 import com.example.dhm30.Helpers.isNetworkAvailable
 
@@ -532,8 +534,9 @@ class TrackingService() : Service() {
             if (activityLogs.isNotEmpty()) {
                 activityLogs.forEach { log ->
                     try {
+                        val userId =  SyncWorker.getIdTokenFromPrefs(this@TrackingService) ?: return@forEach
                         firebaseDatabase.child("users")
-                            .child(FirebaseAuth.getInstance().currentUser?.uid ?: return@forEach)
+                            .child(userId)
                             .child("activity_transitions")
                             .push()
                             .setValue(
@@ -558,8 +561,9 @@ class TrackingService() : Service() {
             if (audioLogs.isNotEmpty()) {
                 audioLogs.forEach { log ->
                     try {
+                        val userId =  getIdTokenFromPrefs(this@TrackingService) ?: return@forEach
                         firebaseDatabase.child("users")
-                            .child(FirebaseAuth.getInstance().currentUser?.uid ?: return@forEach)
+                            .child(userId)
                             .child("audio_data")
                             .push()
                             .setValue(
@@ -588,8 +592,9 @@ class TrackingService() : Service() {
 
                 logs.forEach { log ->
                     try {
+                        val userId =  SyncWorker.getIdTokenFromPrefs(this@TrackingService) ?: return@forEach
                         firebaseDatabase.child("users")
-                            .child(FirebaseAuth.getInstance().currentUser?.uid ?: return@forEach)
+                            .child(userId)
                             .child("gps_data")
                             .push()
                             .setValue(
