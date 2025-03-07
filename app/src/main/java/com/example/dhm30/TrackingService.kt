@@ -680,7 +680,7 @@ class TrackingService() : Service() {
         // Schedule alarms
 
 
-        scheduleAlarm(alarmManager, 21, 0, 0, 1002) // Second alarm at 9:00 PM
+        scheduleAlarm(alarmManager, 21, 0, 0, 3001) // Second alarm at 9:00 PM
       //  scheduleAlarm(alarmManager, 14, 47, 0, 1003) // Second alarm at 9:00 PM
 //        scheduleAlarm(alarmManager, 12, 57, 0, 1004) // Second alarm at 9:00 PM
 //        scheduleAlarm(alarmManager, 12, 55, 0, 1005) // Second alarm at 9:00 PM
@@ -1081,7 +1081,7 @@ class TrackingService() : Service() {
                     val rescheduleIntent = Intent(it, NotificationReceiver::class.java)
                     val reschedulePendingIntent = PendingIntent.getBroadcast(
                         it,
-                        1001,
+                        2001,
                         rescheduleIntent,
                         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                     )
@@ -1145,12 +1145,12 @@ class TrackingService() : Service() {
                     val alarmManager = it.getSystemService(Context.ALARM_SERVICE) as AlarmManager
                     val syncIntent = Intent(it, SyncReceiver::class.java)
                     val pendingSyncIntent = PendingIntent.getBroadcast(
-                        it, 0, syncIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                        it, 2111, syncIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                     )
 
                     alarmManager.setExactAndAllowWhileIdle(
                         AlarmManager.RTC_WAKEUP,
-                        System.currentTimeMillis() + 5000,
+                        System.currentTimeMillis() + 10000,
                         pendingSyncIntent
                     )
                 }
